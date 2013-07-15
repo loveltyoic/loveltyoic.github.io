@@ -1,0 +1,9 @@
+---
+layout: post
+title: "Hello"
+date: 2013-07-15 11:07
+comments: false 
+categories: 
+---
+##这是我的第一篇octopress博客##
+试验成功！
