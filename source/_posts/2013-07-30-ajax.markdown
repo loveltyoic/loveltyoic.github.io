@@ -1,0 +1,125 @@
+---
+layout: post
+title: "在Rails中使用JQuery+Ajax"
+date: 2013-07-30 15:04
+comments: true
+categories: rails
+---
+一直感觉对Rails中如何使用Ajax感觉很迷糊，今天特地做了一些实验，总算弄清楚一些，赶快记下来。
+<!-- more -->
+首先建立了一个`controller test_pages`,代码如下
+```ruby
+class TestPagesController < ApplicationController
+  def test_page
+  end
+
+  def test_format
+    respond_to do |format|
+      format.js
+      format.json { render json: {
+        text: 'respond_to json!',
+        name: 'lzh'
+        }
+      }
+    end
+  end
+end
+```
+然后在`test_page.html.erb`中建立几个`ajax`的链接和按钮，观察他们的表现。
+代码如下:
+```html 
+<script type="text/javascript">
+  $(document).ready( function() {
+
+    $("#js1").click( function(){
+      $.getScript("/test_format");
+    });
+
+    $("#js2").click( function(){
+      $.ajax({
+        dataType: "script",
+        url: "/test_format"
+      });
+    });
+
+    $("#json1").bind(
+      "ajax:success", function(event,json){ alert(json.text); }
+    );
+
+    $("#json2").click( function(){
+      $.ajax({
+        dataType: "json",
+        url: "/test_format",
+        success: function(json){
+          alert(json.text);
+        }
+      });
+    });
+
+    $("#json3").click( function() {
+      $.getJSON("/test_format",function(json){ alert(json.text);});
+    });
+  });
+</script>
+<%= link_to 'js3', test_format_path, :remote => true, "data-type" => 'script' %>
+<%= link_to 'json1', test_format_path, id: "json1", :remote => true, "data-type" => 'json' %>
+
+
+<button id="js1">js1</button>
+<button id="js2">js2</button>
+<button id="json2">json2</button>
+<button id="json3">json3</button>
+
+<div id="will_change"></div>
+```
+为了实现`ajax`，主要用两种方法，一种是`jQuery`方法，另一种是`helper`方法.
+
+以上代码中的`#js1,#js2,#js3`的行为都是相同的，
+`#json1,#json2,#json3`也是相同的。
+##jQuery方法
+对页面上的元素添加`ajax`事件，然后在事件触发后执行`ajax`请求。
+JQuery提供了几种方法，有
+
++  $.ajax
++  $.getScript
++  $.getJSON
++  $.load
++  $.post
++  $.get
+
+-  请求`js`脚本，用`$.getScript`
+-  请求`json`数据，用`$.getJSON`
+-  而`$.ajax`是最一般化的方法，可以指定一些列的选项。
+
+更详细的说明可以参考《JavaScript权威指南》的JQuery章节。
+##helper方法
+通过`link_to`或`button_to`创建按钮或链接，只需加入`:remote => true`,并且用`"data-type" => 'json'或者'script'`来指明请求的数据格式。
+
+如果使用这种方法，因为无法在`helper`中直接指定回调函数，因此对于`json`数据，没法直接用，怎么办?
+答案就是在页面的脚本中为其绑定一个`ajax`事件监听函数！
+就像
+```javascript
+    $("#json1").bind(
+      "ajax:success", function(event,json){ alert(json.text); }
+    );
+```
+这样，在`ajax`成功返回后，可以通过一个函数来使用返回的`json`数据。
+
+**这个绑定的`function`的参数是有规定的**:
+
+第一个参数代表这个事件对象，而第二个参数就是返回的`json`数据。
+##请求格式
+注意到，所有这些请求的`url`都是相同的`/test_format`，那么如何根据请求返回相应格式呢，`Rails`已经帮我们解决了！
+在`test_format`这个action中，通过`respond_to do |format|`来根据请求返回对应格式的响应。
+而这个请求格式，就是我们在view页面中通过`$.ajax`中的`dataType`或是`helper`方法中的`"data-type"`来指定的了。
+比如，当`"data-type" => 'script'或是dataType: 'script'`时，对应于`format.js`。
+
+服务器端会查找`format.js.erb`,编译后返回`format.js`这个脚本给客户端。
+`format.js.erb`的代码如下
+```javascript
+alert('respond_to js!');
+
+$("#will_change").html("js has been load");
+```
+返回的js脚本会立即执行，可以触发动作或是改变页面的元素。
+而json数据就是在回调的`function`中使用了。

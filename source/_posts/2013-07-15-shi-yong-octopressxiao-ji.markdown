@@ -5,11 +5,10 @@ date: 2013-07-15 11:54
 comments: true
 categories: "技术笔记"
 ---
-之前租了个虚拟主机，一直闲置，后来接触到wordpress，刚好在上面试了一下。感觉像我这样的博客新手用还是不错的。
 
-最近又看到了octopress，刚好是ruby写的，所以没有理由不试一下。
+最近看到了octopress，刚好是ruby写的，所以没有理由不试一下。
 
-GitHub提供了博客空间的服务。下面就记录一下我在github上部署octopress的过程。
+GitHub提供了博客空间的服务。下面就记录一下我在GitHub上部署octopress的过程。
 <!-- more -->
 开始就是照着<http://octopress.org/docs/>上的步骤来呗：
 {% codeblock %}
@@ -31,10 +30,15 @@ rake install
 
 首先在github新建个仓库，仓库名需要是`username.github.com`形式的
 
-比如我的用户名是`loveltyoic`，那么我新建的就是`loveltyoic.github.com`。以下就用这个仓库名为例。
+比如我的用户名是`loveltyoic`，那么我新建的就是`loveltyoic.github.com`。
 
-`rake setup github_pages`
-然后会问你github的仓库地址，那么我的就是`git@github.com:loveltyoic/loveltyoic.github.com.git`
+以下就以这个仓库名为例。
+
+
+```
+rake setup github_pages
+```
+此时会问你github的仓库地址，那么我的就是`git@github.com:loveltyoic/loveltyoic.github.com.git`
 
 按找教程的说法，这个命令会执行6个作用：
 
@@ -72,9 +76,25 @@ rake new_post["我的第一篇博客"]
 
 同样可以添加页面
 ```
-rake new_post["新页面"]
+rake new_page["xinyemian"]
 ```
-这会产生新的页面，比如为博客添加个about页面之类的。
+这会在source下创建新的文件夹xinyemian，然后在xinyemian下会自动生成`index.markdown`。
+比如为博客添加个“关于我”的页面并放到导航栏中。
+首先
+```
+rake new_page["guan-yu-wo"]
+```
+然后编辑`source/guan-yu-wo/index.markdown`，加入自我介绍。
+
+在source/_includes/custom/下放的是个性化页面的东东，因此编辑其中的navigation.html就可以把这个关于我页面加入到导航里啦。
+如下：
+```
+<ul class="main-navigation">
+  <li><a href="{{ root_url }}/">Blog</a></li>
+  <li><a href="{{ root_url }}/blog/archives">Archives</a></li>
+  <li><a href="{{ root_url }}/guan-yu-wo/">关于我</a></li>
+</ul>
+```
 
 在写完一篇博客后，就该生成以及发布了。
 ```
