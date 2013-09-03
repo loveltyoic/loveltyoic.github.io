@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Ruby元编程笔记 -- （一） 对象模型"
+title: "Ruby元编程笔记 —— （一） 对象模型"
 date: 2013-09-03 10:27
 comments: true
 categories: ruby

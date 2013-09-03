@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Ruby元编程笔记 -- （零） 引言"
+title: "Ruby元编程笔记 —— （零） 引言"
 date: 2013-09-03 10:20
 comments: true
 categories: ruby
