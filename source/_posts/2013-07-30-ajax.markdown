@@ -5,6 +5,8 @@ date: 2013-07-30 15:04
 comments: true
 categories: rails
 ---
+![alt text](http://farm3.staticflickr.com/2866/9653990063_9ba4fed207_c.jpg)
+
 一直感觉对Rails中如何使用Ajax感觉很迷糊，今天特地做了一些实验，总算弄清楚一些，赶快记下来。
 <!-- more -->
 首先建立了一个`controller test_pages`,代码如下
@@ -78,18 +80,13 @@ end
 `#json1,#json2,#json3`也是相同的。
 ##jQuery方法
 对页面上的元素添加`ajax`事件，然后在事件触发后执行`ajax`请求。
-JQuery提供了几种方法，有
+JQuery提供了几种方法，有**$.ajax,$.getScript,$.getJSON,$.load,$.post,$.get**
 
-+  $.ajax
-+  $.getScript
-+  $.getJSON
-+  $.load
-+  $.post
-+  $.get
+其中
 
 -  请求`js`脚本，用`$.getScript`
 -  请求`json`数据，用`$.getJSON`
--  而`$.ajax`是最一般化的方法，可以指定一些列的选项。
+-  而`$.ajax`是最一般化的方法，可以指定所有选项。
 
 更详细的说明可以参考《JavaScript权威指南》的JQuery章节。
 ##helper方法
