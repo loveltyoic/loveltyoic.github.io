@@ -6,7 +6,7 @@ comments: true
 categories: ruby
 ---
 
-![alt text](http://farm3.staticflickr.com/2888/9656919280_8ab725e72a_c.jpg)
+![](http://farm3.staticflickr.com/2888/9656919280_8ab725e72a_c.jpg)
 
 * 通过`Object#send()`取代点标记符来调用`MyClass#my_method()`方法：
 ```ruby

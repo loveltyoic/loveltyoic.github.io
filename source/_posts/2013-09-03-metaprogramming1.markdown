@@ -5,7 +5,7 @@ date: 2013-09-03 10:20
 comments: true
 categories: ruby
 ---
-![alt text](http://farm9.staticflickr.com/8446/7758810948_ce36812ac9_c.jpg)
+![](http://farm9.staticflickr.com/8446/7758810948_ce36812ac9_c.jpg)
 
 *  元编程是编写在运行时操纵语言构件的代码。
 *  内省`（introspection）`

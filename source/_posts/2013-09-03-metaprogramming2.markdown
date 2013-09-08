@@ -5,7 +5,7 @@ date: 2013-09-03 10:27
 comments: true
 categories: ruby
 ---
-![alt text](http://farm9.staticflickr.com/8465/8079198551_48f29d2544_c.jpg)
+![](http://farm9.staticflickr.com/8465/8079198551_48f29d2544_c.jpg)
 
 *  打开类`（Open Class）`
 
