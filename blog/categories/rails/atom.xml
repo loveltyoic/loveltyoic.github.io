@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: rails | 大李子的博客]]></title>
+  <link href="http://loveltyoic.github.io/blog/categories/rails/atom.xml" rel="self"/>
+  <link href="http://loveltyoic.github.io/"/>
+  <updated>2013-11-04T20:28:55+08:00</updated>
+  <id>http://loveltyoic.github.io/</id>
+  <author>
+    <name><![CDATA[李梓赫]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[在Rails4.0中使用Jquery-File-Upload上传多个文件]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/09/19/jquery-fileupload/"/>
+    <updated>2013-09-19T09:45:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/09/19/jquery-fileupload</id>
+    <content type="html"><![CDATA[<p>在网站中上传图片是一个非常普遍的需求。感谢强大的<a href="https://github.com/blueimp/jQuery-File-Upload">Jquery-File-Upload</a>，让这个功能简化了许多。
+需要说明，我的项目环境是<code>Rails4.0+Mongoid+carrierwave</code>，需求是对于一辆汽车，上传多张图片并展示出来。
+下面就记录一下我是如何实现的。</p>
+
+<!-- more -->
+
+
+<h3>Model</h3>
+
+<p>```ruby picture.rb
+class Picture
+  include Mongoid::Document</p>
+
+<p>  belongs_to :car
+  mount_uploader :image, PictureUploader # 挂载carrierwave</p>
+
+<p>  field :image, type: String
+  field :image_cache, type: String
+  field :car_token, type: String</p>
+
+<p>  def output_json</p>
+
+<pre><code>{
+  "name" =&gt; read_attribute(:image),
+  "size" =&gt; image.size,
+  "url" =&gt; image.url,
+  "delete_url" =&gt; id,
+  "picture_id" =&gt; id,
+  "delete_type" =&gt; "DELETE"
+}.to_json
+</code></pre>
+
+<p>  end</p>
+
+<p>end
+```</p>
+
+<p>```ruby car.rb
+class Car
+  include Mongoid::Document</p>
+
+<p>  has_many :pictures, autosave: true</p>
+
+<p>  def generate_token</p>
+
+<pre><code>self.token = loop do
+  random_token = SecureRandom.urlsafe_base64
+  break random_token if Car.find(token: random_token).nil?
+end
+</code></pre>
+
+<p>  end
+end
+<code>``
+说明：一辆车可以有多张图片，因此用has_many关联。
+那么这个</code>generate_token`是做什么的呢，一会在controller中就会看到用处了！</p>
+
+<h3>Controller</h3>
+
+<ul>
+<li><p>因为Rails4.0应用<code>strong parameters</code>, 因此需要在控制器中做白名单处理，不然参数会被禁止传入。
+```ruby
+class PicturesController &lt; ApplicationController</p>
+
+<p>def destroy
+  car = Car.find(params[:car_id])
+  @pic = car.pictures.find(params[:id])
+  @pic.destroy
+  respond_to do |format|
+    format.js
+  end
+end</p>
+
+<p>def create
+  @picture = Picture.new(pic_params)
+  if @picture.save
+    respond_to do |format|
+      format.html {
+        render :json => @picture.output_json,
+        :content_type => &lsquo;text/html&rsquo;,
+        :layout => false
+      }
+      format.json {
+        render :json => @picture.output_json
+      }
+    end
+  else
+    render :json => [{:error => &ldquo;custom_failure&rdquo;}], :status => 304
+  end
+end</p>
+
+<p>def pic_params
+  params.require(:picture).permit(:image, :image_cache, :car_token)
+end</p></li>
+</ul>
+
+
+<p>end
+<code>
+* 对于CarsController,只节选关键的`new`和`create`。
+</code>ruby
+  def new</p>
+
+<pre><code>@car = Car.new
+@car.generate_token
+</code></pre>
+
+<p>  end</p>
+
+<p>  def create</p>
+
+<pre><code>@car = Car.new(car_params)
+@car.pictures &lt;&lt; Picture.where(car_token: @car.token)
+@car.user_id = current_user.id
+respond_to do |format|
+  if @car.save!
+    flash[:success] = '车辆信息创建成功!'
+    format.html { redirect_to @car }
+    format.json { render json: @car, status: :created, location: @car }
+  else
+    format.html { render action: "new" }
+    format.json { render json: @car.errors, status: :unprocessable_entity }
+  end
+end
+</code></pre>
+
+<p>  end
+  def car_params</p>
+
+<pre><code>params.require(:car).permit(:token)
+</code></pre>
+
+<p>  end
+```</p>
+
+<h3>View表单</h3>
+
+<p>```erb
+&lt;%= simple_form_for @car, :html => {:multipart => true} do |f| %></p>
+
+<pre><code>&lt;%= f.input :token, as: :hidden, value: @car.token %&gt;
+&lt;%= f.submit "保存", class: 'btn btn-primary btn-large' %&gt;
+</code></pre>
+
+<p>&lt;% end %>
+&lt;%= form_for Picture.new, :html => {:multipart => true, id: &lsquo;new_picture&rsquo;} do |f| %>
+  &lt;%= f.hidden_field :car_token, value: @car.token %>
+  &lt;%= f.file_field :image, multiple: true, name: &lsquo;picture[image]&rsquo; %>
+&lt;% end %></p>
+
+<script>
+$(function () {
+    $('#new_picture').fileupload({ #调用Jquery-File-Upload
+      dataType: 'json',
+      progressall: function (e, data) {
+        var progress = parseInt(data.loaded / data.total * 100, 10);
+        console.log(progress);
+        $('#progress .progress-bar').css(
+            'width', progress + '%'
+        );
+      },
+      done: function (e, data) {
+        
+      }
+    });
+});
+</script>
+
+
+<p>```</p>
+
+<h3>说明</h3>
+
+<p>从表单代码可以看出，这里是在一个页面中放了两个表单，一个是car的，另一个是picture的。</p>
+
+<p>图片用<a href="https://github.com/blueimp/jQuery-File-Upload">Jquery-File-Upload</a>上传，实际上是调用了jquery的ajax。</p>
+
+<p>当一次上传多张图片时，实际上是<strong>用ajax将图片一张接一张的上传</strong>。</p>
+
+<p>举例来说，如果我一次上传了3张图片，那么就有3个ajax请求，每一次请求都会触发PicturesController的<code>create action</code>。</p>
+
+<p>此时的数据库中，就有了3个picture对象，也就是3张图片。</p>
+
+<p>那么，怎样才能将这3张图片与表单中的<code>@car</code>关联起来呢？</p>
+
+<p>一般来说，当我们上传图片时，父对象car还没有save到数据库中。</p>
+
+<p>因此就需要一个域将car与picture关联起来，其实就是额外构造的外键 —— car中的token。</p>
+
+<p>在car的<code>new action</code>中，通过generate_token构造外键。</p>
+
+<p>然后在异步上传图片后，在picture的<code>create action</code>中存储这个token。</p>
+
+<p>当用户填写表单其他部分并提交后，触发car的<code>create action</code>，此时根据token在数据库中查找对应的picture，加入到<code>car.pictures</code>队列，至此picture就和car关联起来了。</p>
+
+<h3>写在最后</h3>
+
+<p>被上传的问题困扰了一阵子，在看了许多教程和代码后，终于是初步完成了，感谢github上开源代码的前辈！</p>
+
+<p>抱歉我的这个项目并不开源，不过跟本文相关的代码也都贴出来了。
+另外我还想弄一个乐高爱好者的网站，那个项目会是开源的。</p>
+
+<p>以上重点说明的都是我觉得开始没弄明白的问题，主要是model怎么设计的，controller怎么执行的，view怎么构造的。</p>
+
+<p>至于<a href="https://github.com/blueimp/jQuery-File-Upload">Jquery-File-Upload</a>怎么用，我觉得主要还是看项目主页上的说明吧，我暂时也就是用了basic的功能。</p>
+
+<p>如果这篇文章能给任何人带来帮助，那么我会非常开心。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[在Rails中使用JQuery+Ajax]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/07/30/ajax/"/>
+    <updated>2013-07-30T15:04:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/07/30/ajax</id>
+    <content type="html"><![CDATA[<p><img src="http://farm3.staticflickr.com/2866/9653990063_9ba4fed207_c.jpg" alt="alt text" /></p>
+
+<p>一直感觉对Rails中如何使用Ajax感觉很迷糊，今天特地做了一些实验，总算弄清楚一些，赶快记下来。</p>
+
+<!-- more -->
+
+
+<p>首先建立了一个<code>controller test_pages</code>,代码如下
+```ruby
+class TestPagesController &lt; ApplicationController
+  def test_page
+  end</p>
+
+<p>  def test_format</p>
+
+<pre><code>respond_to do |format|
+  format.js
+  format.json { render json: {
+    text: 'respond_to json!',
+    name: 'lzh'
+    }
+  }
+end
+</code></pre>
+
+<p>  end
+end
+<code>
+然后在`test_page.html.erb`中建立几个`ajax`的链接和按钮，观察他们的表现。
+代码如下:
+</code>html</p>
+
+<script type="text/javascript">
+  $(document).ready( function() {
+
+    $("#js1").click( function(){
+      $.getScript("/test_format");
+    });
+
+    $("#js2").click( function(){
+      $.ajax({
+        dataType: "script",
+        url: "/test_format"
+      });
+    });
+
+    $("#json1").bind(
+      "ajax:success", function(event,json){ alert(json.text); }
+    );
+
+    $("#json2").click( function(){
+      $.ajax({
+        dataType: "json",
+        url: "/test_format",
+        success: function(json){
+          alert(json.text);
+        }
+      });
+    });
+
+    $("#json3").click( function() {
+      $.getJSON("/test_format",function(json){ alert(json.text);});
+    });
+  });
+</script>
+
+
+<p>&lt;%= link_to &lsquo;js3&rsquo;, test_format_path, :remote => true, &ldquo;data-type&rdquo; => &lsquo;script&rsquo; %>
+&lt;%= link_to &lsquo;json1&rsquo;, test_format_path, id: &ldquo;json1&rdquo;, :remote => true, &ldquo;data-type&rdquo; => &lsquo;json&rsquo; %></p>
+
+<p><button id="js1">js1</button>
+<button id="js2">js2</button>
+<button id="json2">json2</button>
+<button id="json3">json3</button></p>
+
+<div id="will_change"></div>
+
+
+<p><code>``
+为了实现</code>ajax<code>，主要用两种方法，一种是</code>jQuery<code>方法，另一种是</code>helper`方法.</p>
+
+<p>以上代码中的<code>#js1,#js2,#js3</code>的行为都是相同的，
+<code>#json1,#json2,#json3</code>也是相同的。</p>
+
+<h2>jQuery方法</h2>
+
+<p>对页面上的元素添加<code>ajax</code>事件，然后在事件触发后执行<code>ajax</code>请求。
+JQuery提供了几种方法，有<strong>$.ajax,$.getScript,$.getJSON,$.load,$.post,$.get</strong></p>
+
+<p>其中</p>
+
+<ul>
+<li>请求<code>js</code>脚本，用<code>$.getScript</code></li>
+<li>请求<code>json</code>数据，用<code>$.getJSON</code></li>
+<li>而<code>$.ajax</code>是最一般化的方法，可以指定所有选项。</li>
+</ul>
+
+
+<p>更详细的说明可以参考《JavaScript权威指南》的JQuery章节。</p>
+
+<h2>helper方法</h2>
+
+<p>通过<code>link_to</code>或<code>button_to</code>创建按钮或链接，只需加入<code>:remote =&gt; true</code>,并且用<code>"data-type" =&gt; 'json'或者'script'</code>来指明请求的数据格式。</p>
+
+<p>如果使用这种方法，因为无法在<code>helper</code>中直接指定回调函数，因此对于<code>json</code>数据，没法直接用，怎么办?
+答案就是在页面的脚本中为其绑定一个<code>ajax</code>事件监听函数！
+就像
+```javascript</p>
+
+<pre><code>$("#json1").bind(
+  "ajax:success", function(event,json){ alert(json.text); }
+);
+</code></pre>
+
+<p><code>``
+这样，在</code>ajax<code>成功返回后，可以通过一个函数来使用返回的</code>json`数据。</p>
+
+<p><strong>这个绑定的<code>function</code>的参数是有规定的</strong>:</p>
+
+<p>第一个参数代表这个事件对象，而第二个参数就是返回的<code>json</code>数据。</p>
+
+<h2>请求格式</h2>
+
+<p>注意到，所有这些请求的<code>url</code>都是相同的<code>/test_format</code>，那么如何根据请求返回相应格式呢，<code>Rails</code>已经帮我们解决了！
+在<code>test_format</code>这个action中，通过<code>respond_to do |format|</code>来根据请求返回对应格式的响应。
+而这个请求格式，就是我们在view页面中通过<code>$.ajax</code>中的<code>dataType</code>或是<code>helper</code>方法中的<code>"data-type"</code>来指定的了。
+比如，当<code>"data-type" =&gt; 'script'或是dataType: 'script'</code>时，对应于<code>format.js</code>。</p>
+
+<p>服务器端会查找<code>format.js.erb</code>,编译后返回<code>format.js</code>这个脚本给客户端。
+<code>format.js.erb</code>的代码如下
+```javascript
+alert(&lsquo;respond_to js!&rsquo;);</p>
+
+<p>$(&ldquo;#will_change&rdquo;).html(&ldquo;js has been load&rdquo;);
+<code>``
+返回的js脚本会立即执行，可以触发动作或是改变页面的元素。
+而json数据就是在回调的</code>function`中使用了。</p>
+]]></content>
+  </entry>
+  
+</feed>

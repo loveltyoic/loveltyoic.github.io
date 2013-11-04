@@ -1,0 +1,249 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Ruby元编程笔记 —— （三） 代码块 - 大李子的博客</title>
+	<meta name="author" content="李梓赫">
+
+	
+	<meta name="description" content="* 块是一种控制作用域scope的强大手段，作用域指的是哪些代码可以看到哪些变量和方法。
+* 调用一个方法时，才可以定义一个块，块会直接传递给这个方法，然后该方法可以用yield关键字回调这个块。 Kernel#block_given?()询问当前的方法调用是否包含块。
+局部变量、实例变量、 &hellip;">
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="大李子的博客" type="application/atom+xml">
+	<link rel="canonical" href="">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script async="true" src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	
+</head>
+
+
+<body>
+	<header id="header" class="inner"><h1><a href="/">大李子的博客</a></h1>
+<nav id="main-nav"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</nav>
+<nav id="mobile-nav">
+	<div class="alignleft menu">
+		<a class="button">Menu</a>
+		<div class="container"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</div>
+	</div>
+	<div class="alignright search">
+		<a class="button"></a>
+		<div class="container">
+			<form action="http://google.com/search" method="get">
+				<input type="text" name="q" results="0">
+				<input type="hidden" name="q" value="site:loveltyoic.github.io">
+			</form>
+		</div>
+	</div>
+</nav>
+<nav id="sub-nav" class="alignright">
+	<div class="social">
+		
+		
+		
+		
+    
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+    
+	</div>
+	<form class="search" action="http://google.com/search" method="get">
+		<input class="alignright" type="text" name="q" results="0">
+		<input type="hidden" name="q" value="site:loveltyoic.github.io">
+	</form>
+</nav>
+
+</header>
+	
+		
+	
+	<div id="content" class="inner"><article class="post">
+	<h2 class="title">Ruby元编程笔记 —— （三） 代码块</h2>
+	<div class="entry-content"><p><img src="http://farm3.staticflickr.com/2812/9684885545_7ffe7a3990_c.jpg" alt="" />
+* 块是一种控制作用域<code>scope</code>的强大手段，作用域指的是哪些代码可以看到哪些变量和方法。
+* 调用一个方法时，才可以定义一个块，块会直接传递给这个方法，然后该方法可以用<code>yield</code>关键字回调这个块。</p>
+
+<!-- more -->
+
+
+<ul>
+<li><code>Kernel#block_given?()</code>询问当前的方法调用是否包含块。</li>
+<li>局部变量、实例变量、self &hellip;都是绑定在对象上的名字，简称绑定<code>binding</code>。块既包含代码，也包含一组绑定。</li>
+<li>当创建块时会获取到局部绑定，然后把快练同他自己的绑定传递给一个方法。把块称为闭包<code>closure</code>。意味着一个块可以获取局部绑定，病一直带着他们。</li>
+<li>可以在块内部定义额外的绑定，但是这些绑定在块结束时就会消失。</li>
+<li><code>Kernel#local_variables()</code>方法跟踪绑定的名字。</li>
+<li>只要程序切换了作用域，一些绑定就会被全新的绑定所取代。不过，同一对象的实例变量始终存在于作用域中。</li>
+<li><p>作用域门：</p>
+
+<ul>
+<li>class 类定义</li>
+<li>module 模块定义</li>
+<li>def 方法<br/>
+每个关键字充当一个作用域门，关闭前一个作用域，同时打开一个新的作用域。</li>
+</ul>
+</li>
+<li><p>在<code>main</code>对象扮演<code>self</code>的角色时，可以访问一个顶级实例变量。</p></li>
+<li>类和模块中定义的代码会被立即执行，方法中的代码只有被调用时才执行。</li>
+<li><p>用<code>Class.new()</code>代替<code>class</code></p>
+
+<p><code>Module#define_method()</code>代替<code>def</code></p>
+
+<p>可以让一个作用域看到另一个作用域中的变量。如果两个作用域被挤压在一起，他们就可以共享各自的变量，称之为一个扁平作用域<code>Flat Scope</code>。</p></li>
+<li>假定想在一组方法之间共享一个变量，但是又不希望其他方法访问这个变量，就可以把这些方法定义在那个变量所在的扁平作用域中，称为共享作用域。</li>
+<li>如果要让绑定穿越作用域门，那么可以用方法调用来代替作用域门：用一个闭包获取当前的绑定，并把这个闭包传递给方法。</li>
+<li>把传递给<code>instance_eval()</code>的块称为一个上下文探针<code>Context Probe</code>，它在对象的上下文中执行。</li>
+<li>创建一个对象，仅仅是为了在其中执行块，这样的对象称为洁净室<code>Clean Room</code></li>
+<li>一个<code>Proc</code>就是一个转换成对象的块，通过把块传给<code>Proc.new</code>来创建一个<code>Proc</code>，并用<code>Proc#call()</code>方法来执行这个由块转换来的对象。这种技术称为延迟执行<code>Deferred Evaluation</code>。</li>
+<li><code>lambda() 和 proc() 是 Kernel方法</code>，用于把块转化为<code>Proc</code>。</li>
+<li>块像是方法的额外的匿名参数。在方法中通过<code>yield</code>运行一个块，但不能：
+
+<ul>
+<li>把这个块传递给另外一个方法</li>
+<li>把这个块转换为一个<code>Proc</code></li>
+</ul>
+</li>
+<li>将块附加到一个绑定上，可以给这个方法添加一个特殊的参数，这个参数必须是参数列表中的最后一个，且以<code>&amp;</code>符号开头，<code>&amp;</code>操作符的真正含义：这是一个<code>Proc</code>对象，我想把它当成一个块来使用。使用<code>&amp;</code>把<code>Proc</code>转换为块。</li>
+<li>使用<code>lambda()</code>创建的<code>Proc</code>称为<code>lambda</code></li>
+<li>在<code>lambda</code>中，<code>return</code>表示从这个<code>lambda</code>中返回；在<code>proc</code>中，<code>return</code>表示从定义<code>proc</code>的作用域中返回。</li>
+<li>如果调用<code>lambda</code>时的参数数量不对，会抛出<code>ArgumentError</code>异常。</li>
+<li>简洁<code>lambda</code></li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="o">-&gt;</span> <span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="p">{</span> <span class="n">x</span><span class="o">+</span><span class="mi">1</span> <span class="p">}</span>
+</span><span class='line'>  <span class="c1">#等同于</span>
+</span><span class='line'>  <span class="nb">lambda</span> <span class="p">{</span> <span class="o">|</span><span class="n">x</span><span class="o">|</span> <span class="n">x</span><span class="o">+</span><span class="mi">1</span> <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>调用<code>Object#method()</code>方法可以获得一个用<code>Method</code>对象表示的方法，可以用<code>Method#call</code>对它进行调用。</li>
+<li><code>lambda</code>在定义它的作用域中执行（他是一个闭包），而<code>Method</code>对象会在自身所在对象的作用域中执行。</li>
+<li><code>Method#unbind()</code>把方法和绑定的对象分离，<code>Method#bind()</code>可以把这个<code>UnboundMethod</code>再次绑定到同属一个类的另一个对象上。</li>
+<li>可以调用<code>Method#to_proc()</code>方法把<code>Method</code>对象转换为<code>Proc</code>对象，也可以用<code>define_method()</code>方法把块转换为<code>Method</code>。</li>
+<li>可调用对象是可以执行的代码片段，他们有自己的作用域，有如下几种形式的可调用对象：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="err">块</span>        <span class="o">-|</span>
+</span><span class='line'>  <span class="nb">proc</span>       <span class="o">|--&gt;</span>  <span class="c1">#定义自身的作用域中执行</span>
+</span><span class='line'>  <span class="nb">lambda</span>    <span class="o">-|</span>
+</span><span class='line'>  <span class="err">方法</span>              <span class="c1">#在所绑定对象的作用域中执行  </span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>DSL(Domain-Specific Language)领域专属语言.</li>
+</ul>
+
+</div>
+
+
+<div class="meta">
+	<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-09-08T20:14:00+08:00" pubdate data-updated="true">Sep 8<span>th</span>, 2013</time></div>
+	<div class="tags">
+
+
+	<a class='category' href='/blog/categories/ruby/'>ruby</a>
+
+
+</div>
+	
+	<div class="comments"><a href="#disqus_thread">Comments</a></div>
+	
+</div>
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+		
+		
+		
+		
+	</div>
+	
+</div>
+
+
+
+<section id="comment">
+    <h2 class="title">Comments</h2>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+</div>
+	<footer id="footer" class="inner">Copyright &copy; 2013
+
+    李梓赫
+
+</footer>
+	<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'loveltyoic';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://loveltyoic.github.io/blog/2013/09/08/metaprogramming4/';
+        var disqus_url = 'http://loveltyoic.github.io/blog/2013/09/08/metaprogramming4/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//go.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+</body>
+</html>

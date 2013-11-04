@@ -1,0 +1,313 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Octopress初体验 - 大李子的博客</title>
+	<meta name="author" content="李梓赫">
+
+	
+	<meta name="description" content="最近看到了octopress，刚好是ruby写的，所以没有理由不试一下。 GitHub提供了博客空间的服务。下面就记录一下我在GitHub上部署octopress的过程。 开始就是照着http://octopress.org/docs/上的步骤来呗： 1
+git clone git:// &hellip;">
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="大李子的博客" type="application/atom+xml">
+	<link rel="canonical" href="">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script async="true" src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	
+</head>
+
+
+<body>
+	<header id="header" class="inner"><h1><a href="/">大李子的博客</a></h1>
+<nav id="main-nav"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</nav>
+<nav id="mobile-nav">
+	<div class="alignleft menu">
+		<a class="button">Menu</a>
+		<div class="container"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</div>
+	</div>
+	<div class="alignright search">
+		<a class="button"></a>
+		<div class="container">
+			<form action="http://google.com/search" method="get">
+				<input type="text" name="q" results="0">
+				<input type="hidden" name="q" value="site:loveltyoic.github.io">
+			</form>
+		</div>
+	</div>
+</nav>
+<nav id="sub-nav" class="alignright">
+	<div class="social">
+		
+		
+		
+		
+    
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+    
+	</div>
+	<form class="search" action="http://google.com/search" method="get">
+		<input class="alignright" type="text" name="q" results="0">
+		<input type="hidden" name="q" value="site:loveltyoic.github.io">
+	</form>
+</nav>
+
+</header>
+	
+		
+	
+	<div id="content" class="inner"><article class="post">
+	<h2 class="title">Octopress初体验</h2>
+	<div class="entry-content"><p><img src="http://farm4.staticflickr.com/3796/9654815358_f792c648fb_c.jpg" alt="alt text" /></p>
+
+<p>最近看到了octopress，刚好是ruby写的，所以没有理由不试一下。</p>
+
+<p>GitHub提供了博客空间的服务。下面就记录一下我在GitHub上部署octopress的过程。</p>
+
+<!-- more -->
+
+
+<p>开始就是照着<a href="http://octopress.org/docs/">http://octopress.org/docs/</a>上的步骤来呗：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git clone git://github.com/imathis/octopress.git octopress</span></code></pre></td></tr></table></div></figure>
+
+
+<p>就是把octopress的程序拷到本地的文件夹octopress里，当然可以随便命名。</p>
+
+<p>接着把路径切换到这个文件夹中。</p>
+
+<p>然后就和rails的程序比较像了,安装必要的gem</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>bundle install</span></code></pre></td></tr></table></div></figure>
+
+
+<p>最后安装主题</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake install</span></code></pre></td></tr></table></div></figure>
+
+
+<p>感觉把博客放到github还是比较方便的：</p>
+
+<p>首先在github新建个仓库，仓库名需要是<code>username.github.com</code>形式的</p>
+
+<p>比如我的用户名是<code>loveltyoic</code>，那么我新建的就是<code>loveltyoic.github.com</code>。</p>
+
+<p>以下就以这个仓库名为例。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake setup github_pages</span></code></pre></td></tr></table></div></figure>
+
+
+<p>此时会问你github的仓库地址，那么我的就是<code>git@github.com:loveltyoic/loveltyoic.github.com.git</code></p>
+
+<p>按找教程的说法，这个命令会执行6个作用：</p>
+
+<ol>
+<li>设置仓库地址</li>
+<li>将clone时的远程分支origin改为octopress</li>
+<li>然后将第一步的仓库地址设为默认远程分支origin</li>
+<li>从master切换为source分支</li>
+<li>根据仓库地址设置博客地址</li>
+<li>在_deploy文件夹下设置master分支，用于部署</li>
+</ol>
+
+
+<p>稍微解释一下，这个命令会生成一个远程分支origin，其地址就是刚刚输入的仓库地址了，所以这个是可以改的，我之前就是用了https的地址，结果每次都要输入用户名密码，非常麻烦，所以就改成ssh形式的地址。因为我已经设置好了ssh密钥，就可直接push了。</p>
+
+<p>接下来</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake generate
+</span><span class='line'>rake deploy</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这两个命令将生成博客页面，然后将页面拷贝到_deploy文件夹下，并且执行git的<code>add,commit以及push</code>。这样就会在仓库的master分支下产生博客内容了。</p>
+
+<p>最后可以手动将所有源码push到远程仓库的source分支下。</p>
+
+<p>切换到octopress目录</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git add .
+</span><span class='line'>git commit -m 'xxx'
+</span><span class='line'>git push origin source</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这样一个建立在github上的博客就建好了，接下来就该编辑第一篇博客了，Let&rsquo;s go!</p>
+
+<p>首先说明，所有博客源码都会放在source/_posts文件夹内。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake new_post["我的第一篇博客"]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这样就会生成一个markdown格式的源文件，可以用markdown语法编辑啦，括号内就是文章标题。生成的源文件会有一个文件头，在编译时会产生相应的作用，比如关闭评论，添加分类等。</p>
+
+<p>同样可以添加页面</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake new_page["xinyemian"]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这会在source下创建新的文件夹xinyemian，然后在xinyemian下会自动生成<code>index.markdown</code>。
+比如为博客添加个“关于我”的页面并放到导航栏中。
+首先</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake new_page["guan-yu-wo"]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后编辑<code>source/guan-yu-wo/index.markdown</code>，加入自我介绍。</p>
+
+<p>在source/_includes/custom/下放的是个性化页面的东东，因此编辑其中的navigation.html就可以把这个关于我页面加入到导航里啦。
+如下：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;ul class="main-navigation"&gt;
+</span><span class='line'>  &lt;li&gt;&lt;a href="/"&gt;Blog&lt;/a&gt;&lt;/li&gt;
+</span><span class='line'>  &lt;li&gt;&lt;a href="/blog/archives"&gt;Archives&lt;/a&gt;&lt;/li&gt;
+</span><span class='line'>  &lt;li&gt;&lt;a href="/guan-yu-wo/"&gt;关于我&lt;/a&gt;&lt;/li&gt;
+</span><span class='line'>&lt;/ul&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在写完一篇博客后，就该生成以及发布了。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake generate
+</span><span class='line'>rake preview</span></code></pre></td></tr></table></div></figure>
+
+
+<p>首先生成文章页面</p>
+
+<p>然后是在本地预览，会启动一个web服务，用浏览器打开<a href="http://localhost:4000">http://localhost:4000</a>可以预览</p>
+
+<p>如果没有问题，就可以部署到github上了。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake deploy</span></code></pre></td></tr></table></div></figure>
+
+
+<p>部署过后，访问<a href="http://loveltyoic.github.com">http://loveltyoic.github.com</a>，可以看到博客已经更新了。</p>
+
+<p>以上都是最基本的操作了，随着使用慢慢探索吧。</p>
+
+<p>对了，还有个比较重要的内容就是配置文件。</p>
+
+<p>暂时用到的就是根目录下的_config.yml</p>
+
+<p>可以配置博客标题以及附标题，作者等等，根据注释可以大概看懂。</p>
+</div>
+
+
+<div class="meta">
+	<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-15T11:54:00+08:00" pubdate data-updated="true">Jul 15<span>th</span>, 2013</time></div>
+	<div class="tags">
+
+
+	<a class='category' href='/blog/categories/ji-zhu-bi-ji/'>技术笔记</a>
+
+
+</div>
+	
+	<div class="comments"><a href="#disqus_thread">Comments</a></div>
+	
+</div>
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+		
+		
+		
+		
+	</div>
+	
+</div>
+
+
+
+<section id="comment">
+    <h2 class="title">Comments</h2>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+</div>
+	<footer id="footer" class="inner">Copyright &copy; 2013
+
+    李梓赫
+
+</footer>
+	<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'loveltyoic';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://loveltyoic.github.io/blog/2013/07/15/shi-yong-octopressxiao-ji/';
+        var disqus_url = 'http://loveltyoic.github.io/blog/2013/07/15/shi-yong-octopressxiao-ji/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//go.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+</body>
+</html>

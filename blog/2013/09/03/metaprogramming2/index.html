@@ -1,0 +1,231 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Ruby元编程笔记 —— （一） 对象模型 - 大李子的博客</title>
+	<meta name="author" content="李梓赫">
+
+	
+	<meta name="description" content="打开类（Open Class） 在已有类中动态的添加方法。 通过Object#methods查看对象的方法，例如数组对象，可以[].methods.grep /正则表达式/查看指定匹配的所有方法名。
+一个对象的实例变量存在于对象本身，而一个对象的方法存在于对象自身的类，称为类的实例方法。 &hellip;">
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="大李子的博客" type="application/atom+xml">
+	<link rel="canonical" href="">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script async="true" src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	
+</head>
+
+
+<body>
+	<header id="header" class="inner"><h1><a href="/">大李子的博客</a></h1>
+<nav id="main-nav"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</nav>
+<nav id="mobile-nav">
+	<div class="alignleft menu">
+		<a class="button">Menu</a>
+		<div class="container"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</div>
+	</div>
+	<div class="alignright search">
+		<a class="button"></a>
+		<div class="container">
+			<form action="http://google.com/search" method="get">
+				<input type="text" name="q" results="0">
+				<input type="hidden" name="q" value="site:loveltyoic.github.io">
+			</form>
+		</div>
+	</div>
+</nav>
+<nav id="sub-nav" class="alignright">
+	<div class="social">
+		
+		
+		
+		
+    
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+    
+	</div>
+	<form class="search" action="http://google.com/search" method="get">
+		<input class="alignright" type="text" name="q" results="0">
+		<input type="hidden" name="q" value="site:loveltyoic.github.io">
+	</form>
+</nav>
+
+</header>
+	
+		
+	
+	<div id="content" class="inner"><article class="post">
+	<h2 class="title">Ruby元编程笔记 —— （一） 对象模型</h2>
+	<div class="entry-content"><p><img src="http://farm9.staticflickr.com/8465/8079198551_48f29d2544_c.jpg" alt="" /></p>
+
+<ul>
+<li>打开类<code>（Open Class）</code></li>
+</ul>
+
+
+<p>  在已有类中动态的添加方法。</p>
+
+<ul>
+<li><p>通过<code>Object#methods</code>查看对象的方法，例如数组对象，可以<code>[].methods.grep /正则表达式/</code>查看指定匹配的所有方法名。</p></li>
+<li><p>一个对象的实例变量存在于对象本身，而一个对象的方法存在于对象自身的类，称为类的实例方法。</p></li>
+</ul>
+
+
+<!-- more -->
+
+
+<ul>
+<li><p>一个类只不过是一个增强的<code>Module</code>， 增加了三个方法 —— <code>new(),allocate(),superclass()</code>，<code>superclass</code>返回超类。</p></li>
+<li><p>类自身也是对象，所有的类最终都继承自<code>Object</code>。</p></li>
+<li><p>可以将<code>Module</code>作为命名空间，例如</p></li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="no">Module</span> <span class="no">Book</span>
+</span><span class='line'>  <span class="k">class</span> <span class="nc">Fiction</span>
+</span><span class='line'>    <span class="o">.</span><span class="n">.</span><span class="o">.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>则可以通过<code>Book::Fiction</code>来引用类，有效避免命名冲突。</p>
+
+<ul>
+<li><p>接收者<code>(receiver)</code>就是调用方法时所用的对象，祖先链<code>(ancestors)</code>就是从一个类上溯到其顶级超类的整个类路径，可能包括模块。调用<code>ancestors()</code>方法来获得一个类的祖先链：<code>MyClass.ancestors</code></p></li>
+<li><p>类中<code>include</code>一个模块时，会将这个模块封装成一个匿名类插入祖先链，在类的正上方，但是通过<code>superclass</code>并不会显示这个匿名类。</p></li>
+<li><p>查看类的私有实例方法</p></li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="no">Class</span><span class="o">.</span><span class="n">private_instance_methods</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><code>self</code>的角色通常是由最后一个接收到方法调用的对象来充当，不过，在类和模块定义中（并且在任何方法定义之外），<code>self</code>的角色由这个类或模块担任：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">MyClass</span>
+</span><span class='line'>  <span class="nb">self</span>  <span class="c1">#=&gt; MyClass</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><p>当调用一个方法时，<code>Ruby</code>首先向右一步找到接收者的类，然后一直向上查找祖先链，直到找到该方法，或到达链顶端。</p></li>
+<li><p>当一个类中包含多个<code>Module</code>时，最后一个<code>include</code>的<code>Module</code>最接近这个类，其中的方法被最先找到。</p></li>
+</ul>
+
+</div>
+
+
+<div class="meta">
+	<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-09-03T10:27:00+08:00" pubdate data-updated="true">Sep 3<span>rd</span>, 2013</time></div>
+	<div class="tags">
+
+
+	<a class='category' href='/blog/categories/ruby/'>ruby</a>
+
+
+</div>
+	
+	<div class="comments"><a href="#disqus_thread">Comments</a></div>
+	
+</div>
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+		
+		
+		
+		
+	</div>
+	
+</div>
+
+
+
+<section id="comment">
+    <h2 class="title">Comments</h2>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+</div>
+	<footer id="footer" class="inner">Copyright &copy; 2013
+
+    李梓赫
+
+</footer>
+	<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'loveltyoic';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://loveltyoic.github.io/blog/2013/09/03/metaprogramming2/';
+        var disqus_url = 'http://loveltyoic.github.io/blog/2013/09/03/metaprogramming2/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//go.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+</body>
+</html>

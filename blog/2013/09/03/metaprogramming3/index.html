@@ -1,0 +1,225 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Ruby元编程笔记 —— （二） 方法 - 大李子的博客</title>
+	<meta name="author" content="李梓赫">
+
+	
+	<meta name="description" content="通过Object#send()取代点标记符来调用MyClass#my_method()方法： 1
+2
+obj = MyClass.new
+obj.send(:my_method,arguments) 通过send()方法，调用的方法名可以是一个参数，这样可以在代码运行期动态决定调用那种方法， &hellip;">
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="大李子的博客" type="application/atom+xml">
+	<link rel="canonical" href="">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script async="true" src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	
+</head>
+
+
+<body>
+	<header id="header" class="inner"><h1><a href="/">大李子的博客</a></h1>
+<nav id="main-nav"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</nav>
+<nav id="mobile-nav">
+	<div class="alignleft menu">
+		<a class="button">Menu</a>
+		<div class="container"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</div>
+	</div>
+	<div class="alignright search">
+		<a class="button"></a>
+		<div class="container">
+			<form action="http://google.com/search" method="get">
+				<input type="text" name="q" results="0">
+				<input type="hidden" name="q" value="site:loveltyoic.github.io">
+			</form>
+		</div>
+	</div>
+</nav>
+<nav id="sub-nav" class="alignright">
+	<div class="social">
+		
+		
+		
+		
+    
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+    
+	</div>
+	<form class="search" action="http://google.com/search" method="get">
+		<input class="alignright" type="text" name="q" results="0">
+		<input type="hidden" name="q" value="site:loveltyoic.github.io">
+	</form>
+</nav>
+
+</header>
+	
+		
+	
+	<div id="content" class="inner"><article class="post">
+	<h2 class="title">Ruby元编程笔记 —— （二） 方法</h2>
+	<div class="entry-content"><p><img src="http://farm3.staticflickr.com/2888/9656919280_8ab725e72a_c.jpg" alt="" /></p>
+
+<ul>
+<li>通过<code>Object#send()</code>取代点标记符来调用<code>MyClass#my_method()</code>方法：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">obj</span> <span class="o">=</span> <span class="no">MyClass</span><span class="o">.</span><span class="n">new</span>
+</span><span class='line'><span class="n">obj</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="ss">:my_method</span><span class="p">,</span><span class="n">arguments</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>  通过<code>send()</code>方法，调用的方法名可以是一个参数，这样可以在代码运行期动态决定调用那种方法，这种技术称为动态派发（<code>Dynamic Dispatch</code>）。</p>
+
+<!-- more -->
+
+
+<ul>
+<li><p>字符串转符号
+<code>String#to_sym()或String#intern()</code></p>
+
+<p>符号转字符串
+<code>Symbol#to_s()或Symbol#id2name()</code></p></li>
+<li>动态定义方法（<code>Dynamic Method</code>）
+在类或模块中，使用<code>define_method()</code>定义一个方法:</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">MyClass</span>
+</span><span class='line'>  <span class="n">define_method</span> <span class="ss">:my_method</span> <span class="k">do</span> <span class="o">|</span><span class="n">my_arg</span><span class="o">|</span>
+</span><span class='line'>    <span class="n">my_arg</span> <span class="o">*</span> <span class="mi">3</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>可以用send()调用任何方法，甚至私有方法。</li>
+<li>匹配括号中正则表达式的字符串会存放在$变量中。<code>=~</code>是正则匹配符。</li>
+<li><code>method_missing</code>是<code>Kernel</code>的一个实例方法，所有对象均存在。当调用一个不存在的方法时，<code>Kernel#method_missing()</code>方法回抛出一个<code>NoMethodError</code>进行响应。每一个它处理的消息都带着被调用方法的名字，以及所有调用是传递的参数和块。</li>
+<li>覆写<code>method_missing</code>方法可以调用接收者实际上不存在的方法，这被称为一个幽灵方法</li>
+<li>用<code>super</code>调用被覆写的超类中的同名方法。</li>
+<li>一个捕获幽灵方法调用病吧他们转发给另一个对象的对象（有时也会在转发前后包装一些自己的逻辑），称为动态代理。</li>
+<li>幽灵方法不是真正的方法，不会出现在<code>Object#methods()</code>获得的方法列表中。</li>
+<li>仅在必要时才使用幽灵方法，首先是用一个普通方法来实现功能，当确信代码没有问题时，把这些方法重构到<code>method_missing()</code>中。</li>
+<li>当幽灵方法和一个真实方法发生名字冲突时，后者会胜出。</li>
+<li>应该在代理类中删除绝大多数继承来的方法，这就是白板（<code>Blank Slate</code>）类。</li>
+<li><p>用<code>Module#undef_method()</code>删除所有（包括继承）方法；</p>
+
+<p>用<code>Module#remove_method()</code>删除自身定义的方法。</p></li>
+</ul>
+
+</div>
+
+
+<div class="meta">
+	<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-09-03T15:07:00+08:00" pubdate data-updated="true">Sep 3<span>rd</span>, 2013</time></div>
+	<div class="tags">
+
+
+	<a class='category' href='/blog/categories/ruby/'>ruby</a>
+
+
+</div>
+	
+	<div class="comments"><a href="#disqus_thread">Comments</a></div>
+	
+</div>
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+		
+		
+		
+		
+	</div>
+	
+</div>
+
+
+
+<section id="comment">
+    <h2 class="title">Comments</h2>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+</div>
+	<footer id="footer" class="inner">Copyright &copy; 2013
+
+    李梓赫
+
+</footer>
+	<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'loveltyoic';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://loveltyoic.github.io/blog/2013/09/03/metaprogramming3/';
+        var disqus_url = 'http://loveltyoic.github.io/blog/2013/09/03/metaprogramming3/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//go.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+</body>
+</html>
