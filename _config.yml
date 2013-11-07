@@ -3,7 +3,7 @@
 # ----------------------- #
 
 url: http://loveltyoic.github.io
-title: 大李子的博客 
+title: 大李子
 subtitle: 我们可以一次一次去撞南墙，但不能一个一个失去理想
 author: 李梓赫
 simple_search: http://google.com/search
@@ -19,7 +19,7 @@ date_format: "ordinal"
 subscribe_rss: /atom.xml
 subscribe_email:
 # RSS feeds can list your email address if you like
-email:
+email: loveltyoic@gmail.com
 
 # ----------------------- #
 #    Jekyll & Plugins     #
@@ -94,7 +94,7 @@ disqus_short_name: loveltyoic
 disqus_show_comment_count: true
 
 # Google Analytics
-google_analytics_tracking_id:
+google_analytics_tracking_id: UA-45531479-1
 
 # Facebook Like
 facebook_like: false

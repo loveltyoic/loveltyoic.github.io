@@ -390,3 +390,19 @@ task :list do
   puts "Tasks: #{(Rake::Task.tasks - [Rake::Task[:list]]).join(', ')}"
   puts "(type rake -T for more detail)\n\n"
 end
+
+def add_book
+  puts '输入书名:'
+  title = STDIN.gets.chomp
+  puts '输入链接:'
+  link = STDIN.gets.chomp
+  File.open('source/books/index.markdown', 'a') do |file|
+    file.puts "+ [#{title}][]"
+    file.puts "[#{title}]: #{link}"
+  end
+end
+
+desc "add one book"
+task :add_book do
+  add_book
+end
