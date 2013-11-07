@@ -1,0 +1,254 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>SSH与Git远端仓库 - 大李子的博客</title>
+	<meta name="author" content="李梓赫">
+
+	
+	<meta name="description" content="接触Git时是和GitHub一块用的。对于GitHub的免费用户，其仓库是全公开的。因此如果公司或团队要想使用私有的代码仓库，就需要付费或自己搭建了。
+现在租了VPS，有条件创建自己的远端仓库了。
+下面就记录一下搭建远端仓库的过程。 SSH 目前对远程主机的操作，都是通过SSH来的。步骤如下： &hellip;">
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="大李子的博客" type="application/atom+xml">
+	<link rel="canonical" href="">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script async="true" src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	
+</head>
+
+
+<body>
+	<header id="header" class="inner"><h1><a href="/">大李子的博客</a></h1>
+<nav id="main-nav"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</nav>
+<nav id="mobile-nav">
+	<div class="alignleft menu">
+		<a class="button">Menu</a>
+		<div class="container"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</div>
+	</div>
+	<div class="alignright search">
+		<a class="button"></a>
+		<div class="container">
+			<form action="http://google.com/search" method="get">
+				<input type="text" name="q" results="0">
+				<input type="hidden" name="q" value="site:loveltyoic.github.io">
+			</form>
+		</div>
+	</div>
+</nav>
+<nav id="sub-nav" class="alignright">
+	<div class="social">
+		
+		
+		
+		
+    
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+    
+	</div>
+	<form class="search" action="http://google.com/search" method="get">
+		<input class="alignright" type="text" name="q" results="0">
+		<input type="hidden" name="q" value="site:loveltyoic.github.io">
+	</form>
+</nav>
+
+</header>
+	
+		
+	
+	<div id="content" class="inner"><article class="post">
+	<h2 class="title">SSH与Git远端仓库</h2>
+	<div class="entry-content"><p>接触Git时是和GitHub一块用的。对于GitHub的免费用户，其仓库是全公开的。因此如果公司或团队要想使用私有的代码仓库，就需要付费或自己搭建了。
+现在租了VPS，有条件创建自己的远端仓库了。
+下面就记录一下搭建远端仓库的过程。</p>
+
+<!-- more -->
+
+
+<h2>SSH</h2>
+
+<p>目前对远程主机的操作，都是通过SSH来的。步骤如下：</p>
+
+<ul>
+<li>首先，需要在本地机器上产生公私钥对</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh-keygen</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这条命令会在<code>～/.ssh/</code> 这个目录下产生<code>id_rsa</code> 这是私钥，就是本地机器SSH到远程主机时需要向远程主机出示的钥匙，另外生成的<code>id_rsa.pub</code>是公钥。</p>
+
+<ul>
+<li>需要将这个公钥上传到远程主机的认证密钥目录下。</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>scp id_rsa.pub 用户名@主机名:～/.ssh/authorized_keys</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>测试一下</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh -T 用户名@主机名</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>补充</h3>
+
+<p>对于一般都在本地操作的用户来说，第一次接触远程主机操作会有一些迷糊，比如我&hellip;因此再补充记录一下我刚开始不太明白的点：</p>
+
+<ul>
+<li>所谓主机名就是host。我们都知道要在网络上找到一台主机，需要用其IP来寻找，但是IP太长，不如名字好记，因此我们就想通过一个好记的别名来寻找他。在现实网络中，这就是DNS。而我理解hostname就是本地版的DNS，通过hostname来查找主机。比如我的远程主机地址是<code>106.186.24.57</code>，我就可以给它设置一个主机名，比如loveltyoic，这样我的本地机器就会自动将loveltyoic解析为<code>106.186.24.57</code>。
+<code>hostname</code>可以查看设置的主机名。要添加主机名记录，则需要修改<code>/etc/hosts</code>这个文件。一行对应一条记录,例如</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>127.0.0.1       localhost
+</span><span class='line'>106.186.24.57  loveltyoic</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当首次SSH到远程主机上时，会有一些提示,大概意思就是说这是第一次登录到远程主机啊，还不认识啊，要不要把我们的私钥出示给他啊。当然要了（请用麦兜的语气），一路确认。
+后果就是在本地主机~/.ssh/known_hosts里添加了一条远程主机的记录，说明我认识他了，当SSH的时候可以向他出示私钥。</p>
+
+<ul>
+<li>在创建公私钥对的时候，会提示设置口令，这个口令是用户验证本地用户对私钥的访问的，直接回车就不设置口令。如果有口令的话，当需要使用私钥时就会询问口令，感觉很麻烦，我没设置。安全与易用真的是一对冤家啊。
+
+<h2>Git repo</h2>
+
+<p>SSH可以用了，接下来就好办多了。
+首先登录到远程主机，然后：</p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mkdir -p ~/git/fluidcars.com.git
+</span><span class='line'>cd ~/git/fluidcars.com.git
+</span><span class='line'>git --bare init</span></code></pre></td></tr></table></div></figure>
+
+
+<p>一个空的仓库已经建好了，so easy!（耳边响起xx高点读机广告）</p>
+
+<p>之后，就可以把这个远端的仓库当作源了。
+在本地的文件夹中</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git remote add origin 用户名@主机名:git/fluidcars.com.git
+</span><span class='line'>git push origin master</span></code></pre></td></tr></table></div></figure>
+
+
+<p>将master分支push到origin源，也就是指定的远端仓库。</p>
+</div>
+
+
+<div class="meta">
+	<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-26T07:58:00+08:00" pubdate data-updated="true">Jul 26<span>th</span>, 2013</time></div>
+	<div class="tags">
+
+
+	<a class='category' href='/blog/categories/git/'>Git</a>
+
+
+</div>
+	
+	<div class="comments"><a href="#disqus_thread">Comments</a></div>
+	
+</div>
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+		
+		
+		
+		
+	</div>
+	
+</div>
+
+
+
+<section id="comment">
+    <h2 class="title">Comments</h2>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+</div>
+	<footer id="footer" class="inner">Copyright &copy; 2013
+
+    李梓赫
+
+</footer>
+	<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'loveltyoic';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://loveltyoic.github.io/blog/2013/07/26/git/';
+        var disqus_url = 'http://loveltyoic.github.io/blog/2013/07/26/git/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//go.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+</body>
+</html>

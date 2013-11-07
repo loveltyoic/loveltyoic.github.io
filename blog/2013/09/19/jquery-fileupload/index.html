@@ -1,0 +1,476 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>在Rails4.0中使用Jquery-File-Upload上传多个文件 - 大李子的博客</title>
+	<meta name="author" content="李梓赫">
+
+	
+	<meta name="description" content="在网站中上传图片是一个非常普遍的需求。感谢强大的Jquery-File-Upload，让这个功能简化了许多。
+需要说明，我的项目环境是Rails4.0+Mongoid+carrierwave，需求是对于一辆汽车，上传多张图片并展示出来。
+下面就记录一下我是如何实现的。 Model picture. &hellip;">
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="大李子的博客" type="application/atom+xml">
+	<link rel="canonical" href="">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script async="true" src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	
+</head>
+
+
+<body>
+	<header id="header" class="inner"><h1><a href="/">大李子的博客</a></h1>
+<nav id="main-nav"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</nav>
+<nav id="mobile-nav">
+	<div class="alignleft menu">
+		<a class="button">Menu</a>
+		<div class="container"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</div>
+	</div>
+	<div class="alignright search">
+		<a class="button"></a>
+		<div class="container">
+			<form action="http://google.com/search" method="get">
+				<input type="text" name="q" results="0">
+				<input type="hidden" name="q" value="site:loveltyoic.github.io">
+			</form>
+		</div>
+	</div>
+</nav>
+<nav id="sub-nav" class="alignright">
+	<div class="social">
+		
+		
+		
+		
+    
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+    
+	</div>
+	<form class="search" action="http://google.com/search" method="get">
+		<input class="alignright" type="text" name="q" results="0">
+		<input type="hidden" name="q" value="site:loveltyoic.github.io">
+	</form>
+</nav>
+
+</header>
+	
+		
+	
+	<div id="content" class="inner"><article class="post">
+	<h2 class="title">在Rails4.0中使用Jquery-File-Upload上传多个文件</h2>
+	<div class="entry-content"><p>在网站中上传图片是一个非常普遍的需求。感谢强大的<a href="https://github.com/blueimp/jQuery-File-Upload">Jquery-File-Upload</a>，让这个功能简化了许多。
+需要说明，我的项目环境是<code>Rails4.0+Mongoid+carrierwave</code>，需求是对于一辆汽车，上传多张图片并展示出来。
+下面就记录一下我是如何实现的。</p>
+
+<!-- more -->
+
+
+<h3>Model</h3>
+
+<figure class='code'><figcaption><span>picture.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">Picture</span>
+</span><span class='line'>  <span class="kp">include</span> <span class="ss">Mongoid</span><span class="p">:</span><span class="ss">:Document</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">belongs_to</span> <span class="ss">:car</span>
+</span><span class='line'>  <span class="n">mount_uploader</span> <span class="ss">:image</span><span class="p">,</span> <span class="no">PictureUploader</span> <span class="c1"># 挂载carrierwave</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">field</span> <span class="ss">:image</span><span class="p">,</span> <span class="ss">type</span><span class="p">:</span> <span class="nb">String</span>
+</span><span class='line'>  <span class="n">field</span> <span class="ss">:image_cache</span><span class="p">,</span> <span class="ss">type</span><span class="p">:</span> <span class="nb">String</span>
+</span><span class='line'>  <span class="n">field</span> <span class="ss">:car_token</span><span class="p">,</span> <span class="ss">type</span><span class="p">:</span> <span class="nb">String</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">output_json</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>      <span class="s2">&quot;name&quot;</span> <span class="o">=&gt;</span> <span class="n">read_attribute</span><span class="p">(</span><span class="ss">:image</span><span class="p">),</span>
+</span><span class='line'>      <span class="s2">&quot;size&quot;</span> <span class="o">=&gt;</span> <span class="n">image</span><span class="o">.</span><span class="n">size</span><span class="p">,</span>
+</span><span class='line'>      <span class="s2">&quot;url&quot;</span> <span class="o">=&gt;</span> <span class="n">image</span><span class="o">.</span><span class="n">url</span><span class="p">,</span>
+</span><span class='line'>      <span class="s2">&quot;delete_url&quot;</span> <span class="o">=&gt;</span> <span class="nb">id</span><span class="p">,</span>
+</span><span class='line'>      <span class="s2">&quot;picture_id&quot;</span> <span class="o">=&gt;</span> <span class="nb">id</span><span class="p">,</span>
+</span><span class='line'>      <span class="s2">&quot;delete_type&quot;</span> <span class="o">=&gt;</span> <span class="s2">&quot;DELETE&quot;</span>
+</span><span class='line'>    <span class="p">}</span><span class="o">.</span><span class="n">to_json</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>car.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">Car</span>
+</span><span class='line'>  <span class="kp">include</span> <span class="ss">Mongoid</span><span class="p">:</span><span class="ss">:Document</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">has_many</span> <span class="ss">:pictures</span><span class="p">,</span> <span class="ss">autosave</span><span class="p">:</span> <span class="kp">true</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">generate_token</span>
+</span><span class='line'>    <span class="nb">self</span><span class="o">.</span><span class="n">token</span> <span class="o">=</span> <span class="kp">loop</span> <span class="k">do</span>
+</span><span class='line'>      <span class="n">random_token</span> <span class="o">=</span> <span class="no">SecureRandom</span><span class="o">.</span><span class="n">urlsafe_base64</span>
+</span><span class='line'>      <span class="k">break</span> <span class="n">random_token</span> <span class="k">if</span> <span class="no">Car</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="ss">token</span><span class="p">:</span> <span class="n">random_token</span><span class="p">)</span><span class="o">.</span><span class="n">nil?</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>说明：一辆车可以有多张图片，因此用has_many关联。
+那么这个<code>generate_token</code>是做什么的呢，一会在controller中就会看到用处了！</p>
+
+<h3>Controller</h3>
+
+<ul>
+<li>因为Rails4.0应用<code>strong parameters</code>, 因此需要在控制器中做白名单处理，不然参数会被禁止传入。</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">PicturesController</span> <span class="o">&lt;</span> <span class="no">ApplicationController</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">destroy</span>
+</span><span class='line'>    <span class="n">car</span> <span class="o">=</span> <span class="no">Car</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">params</span><span class="o">[</span><span class="ss">:car_id</span><span class="o">]</span><span class="p">)</span>
+</span><span class='line'>    <span class="vi">@pic</span> <span class="o">=</span> <span class="n">car</span><span class="o">.</span><span class="n">pictures</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">params</span><span class="o">[</span><span class="ss">:id</span><span class="o">]</span><span class="p">)</span>
+</span><span class='line'>    <span class="vi">@pic</span><span class="o">.</span><span class="n">destroy</span>
+</span><span class='line'>    <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|</span>
+</span><span class='line'>      <span class="nb">format</span><span class="o">.</span><span class="n">js</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">create</span>
+</span><span class='line'>    <span class="vi">@picture</span> <span class="o">=</span> <span class="no">Picture</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">pic_params</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="vi">@picture</span><span class="o">.</span><span class="n">save</span>
+</span><span class='line'>      <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|</span>
+</span><span class='line'>        <span class="nb">format</span><span class="o">.</span><span class="n">html</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">render</span> <span class="ss">:json</span> <span class="o">=&gt;</span> <span class="vi">@picture</span><span class="o">.</span><span class="n">output_json</span><span class="p">,</span>
+</span><span class='line'>          <span class="ss">:content_type</span> <span class="o">=&gt;</span> <span class="s1">&#39;text/html&#39;</span><span class="p">,</span>
+</span><span class='line'>          <span class="ss">:layout</span> <span class="o">=&gt;</span> <span class="kp">false</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="nb">format</span><span class="o">.</span><span class="n">json</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">render</span> <span class="ss">:json</span> <span class="o">=&gt;</span> <span class="vi">@picture</span><span class="o">.</span><span class="n">output_json</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">else</span>
+</span><span class='line'>      <span class="n">render</span> <span class="ss">:json</span> <span class="o">=&gt;</span> <span class="o">[</span><span class="p">{</span><span class="ss">:error</span> <span class="o">=&gt;</span> <span class="s2">&quot;custom_failure&quot;</span><span class="p">}</span><span class="o">]</span><span class="p">,</span> <span class="ss">:status</span> <span class="o">=&gt;</span> <span class="mi">304</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">pic_params</span>
+</span><span class='line'>    <span class="n">params</span><span class="o">.</span><span class="n">require</span><span class="p">(</span><span class="ss">:picture</span><span class="p">)</span><span class="o">.</span><span class="n">permit</span><span class="p">(</span><span class="ss">:image</span><span class="p">,</span> <span class="ss">:image_cache</span><span class="p">,</span> <span class="ss">:car_token</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>对于CarsController,只节选关键的<code>new</code>和<code>create</code>。</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="k">def</span> <span class="nf">new</span>
+</span><span class='line'>    <span class="vi">@car</span> <span class="o">=</span> <span class="no">Car</span><span class="o">.</span><span class="n">new</span>
+</span><span class='line'>    <span class="vi">@car</span><span class="o">.</span><span class="n">generate_token</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">create</span>
+</span><span class='line'>    <span class="vi">@car</span> <span class="o">=</span> <span class="no">Car</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">car_params</span><span class="p">)</span>
+</span><span class='line'>    <span class="vi">@car</span><span class="o">.</span><span class="n">pictures</span> <span class="o">&lt;&lt;</span> <span class="no">Picture</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">car_token</span><span class="p">:</span> <span class="vi">@car</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
+</span><span class='line'>    <span class="vi">@car</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">current_user</span><span class="o">.</span><span class="n">id</span>
+</span><span class='line'>    <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|</span>
+</span><span class='line'>      <span class="k">if</span> <span class="vi">@car</span><span class="o">.</span><span class="n">save!</span>
+</span><span class='line'>        <span class="n">flash</span><span class="o">[</span><span class="ss">:success</span><span class="o">]</span> <span class="o">=</span> <span class="s1">&#39;车辆信息创建成功!&#39;</span>
+</span><span class='line'>        <span class="nb">format</span><span class="o">.</span><span class="n">html</span> <span class="p">{</span> <span class="n">redirect_to</span> <span class="vi">@car</span> <span class="p">}</span>
+</span><span class='line'>        <span class="nb">format</span><span class="o">.</span><span class="n">json</span> <span class="p">{</span> <span class="n">render</span> <span class="ss">json</span><span class="p">:</span> <span class="vi">@car</span><span class="p">,</span> <span class="ss">status</span><span class="p">:</span> <span class="ss">:created</span><span class="p">,</span> <span class="ss">location</span><span class="p">:</span> <span class="vi">@car</span> <span class="p">}</span>
+</span><span class='line'>      <span class="k">else</span>
+</span><span class='line'>        <span class="nb">format</span><span class="o">.</span><span class="n">html</span> <span class="p">{</span> <span class="n">render</span> <span class="ss">action</span><span class="p">:</span> <span class="s2">&quot;new&quot;</span> <span class="p">}</span>
+</span><span class='line'>        <span class="nb">format</span><span class="o">.</span><span class="n">json</span> <span class="p">{</span> <span class="n">render</span> <span class="ss">json</span><span class="p">:</span> <span class="vi">@car</span><span class="o">.</span><span class="n">errors</span><span class="p">,</span> <span class="ss">status</span><span class="p">:</span> <span class="ss">:unprocessable_entity</span> <span class="p">}</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">car_params</span>
+</span><span class='line'>    <span class="n">params</span><span class="o">.</span><span class="n">require</span><span class="p">(</span><span class="ss">:car</span><span class="p">)</span><span class="o">.</span><span class="n">permit</span><span class="p">(</span><span class="ss">:token</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>View表单</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="cp">&lt;%=</span> <span class="n">simple_form_for</span> <span class="vi">@car</span><span class="p">,</span> <span class="ss">:html</span> <span class="o">=&gt;</span> <span class="p">{</span><span class="ss">:multipart</span> <span class="o">=&gt;</span> <span class="kp">true</span><span class="p">}</span> <span class="k">do</span> <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">    </span><span class="cp">&lt;%=</span> <span class="n">f</span><span class="o">.</span><span class="n">input</span> <span class="ss">:token</span><span class="p">,</span> <span class="ss">as</span><span class="p">:</span> <span class="ss">:hidden</span><span class="p">,</span> <span class="ss">value</span><span class="p">:</span> <span class="vi">@car</span><span class="o">.</span><span class="n">token</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">    </span><span class="cp">&lt;%=</span> <span class="n">f</span><span class="o">.</span><span class="n">submit</span> <span class="s2">&quot;保存&quot;</span><span class="p">,</span> <span class="ss">class</span><span class="p">:</span> <span class="s1">&#39;btn btn-primary btn-large&#39;</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="cp">&lt;%</span> <span class="k">end</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="cp">&lt;%=</span> <span class="n">form_for</span> <span class="no">Picture</span><span class="o">.</span><span class="n">new</span><span class="p">,</span> <span class="ss">:html</span> <span class="o">=&gt;</span> <span class="p">{</span><span class="ss">:multipart</span> <span class="o">=&gt;</span> <span class="kp">true</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="s1">&#39;new_picture&#39;</span><span class="p">}</span> <span class="k">do</span> <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%=</span> <span class="n">f</span><span class="o">.</span><span class="n">hidden_field</span> <span class="ss">:car_token</span><span class="p">,</span> <span class="ss">value</span><span class="p">:</span> <span class="vi">@car</span><span class="o">.</span><span class="n">token</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%=</span> <span class="n">f</span><span class="o">.</span><span class="n">file_field</span> <span class="ss">:image</span><span class="p">,</span> <span class="ss">multiple</span><span class="p">:</span> <span class="kp">true</span><span class="p">,</span> <span class="nb">name</span><span class="p">:</span> <span class="s1">&#39;picture[image]&#39;</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="cp">&lt;%</span> <span class="k">end</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">&lt;script&gt;</span>
+</span><span class='line'><span class="x">$(function () {</span>
+</span><span class='line'><span class="x">    $(&#39;#new_picture&#39;).fileupload({ #调用Jquery-File-Upload</span>
+</span><span class='line'><span class="x">      dataType: &#39;json&#39;,</span>
+</span><span class='line'><span class="x">      progressall: function (e, data) {</span>
+</span><span class='line'><span class="x">        var progress = parseInt(data.loaded / data.total * 100, 10);</span>
+</span><span class='line'><span class="x">        console.log(progress);</span>
+</span><span class='line'><span class="x">        $(&#39;#progress .progress-bar&#39;).css(</span>
+</span><span class='line'><span class="x">            &#39;width&#39;, progress + &#39;%&#39;</span>
+</span><span class='line'><span class="x">        );</span>
+</span><span class='line'><span class="x">      },</span>
+</span><span class='line'><span class="x">      done: function (e, data) {</span>
+</span><span class='line'><span class="x">        </span>
+</span><span class='line'><span class="x">      }</span>
+</span><span class='line'><span class="x">    });</span>
+</span><span class='line'><span class="x">});</span>
+</span><span class='line'><span class="x">&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>说明</h3>
+
+<p>从表单代码可以看出，这里是在一个页面中放了两个表单，一个是car的，另一个是picture的。</p>
+
+<p>图片用<a href="https://github.com/blueimp/jQuery-File-Upload">Jquery-File-Upload</a>上传，实际上是调用了jquery的ajax。</p>
+
+<p>当一次上传多张图片时，实际上是<strong>用ajax将图片一张接一张的上传</strong>。</p>
+
+<p>举例来说，如果我一次上传了3张图片，那么就有3个ajax请求，每一次请求都会触发PicturesController的<code>create action</code>。</p>
+
+<p>此时的数据库中，就有了3个picture对象，也就是3张图片。</p>
+
+<p>那么，怎样才能将这3张图片与表单中的<code>@car</code>关联起来呢？</p>
+
+<p>一般来说，当我们上传图片时，父对象car还没有save到数据库中。</p>
+
+<p>因此就需要一个域将car与picture关联起来，其实就是额外构造的外键 —— car中的token。</p>
+
+<p>在car的<code>new action</code>中，通过generate_token构造外键。</p>
+
+<p>然后在异步上传图片后，在picture的<code>create action</code>中存储这个token。</p>
+
+<p>当用户填写表单其他部分并提交后，触发car的<code>create action</code>，此时根据token在数据库中查找对应的picture，加入到<code>car.pictures</code>队列，至此picture就和car关联起来了。</p>
+
+<h3>写在最后</h3>
+
+<p>被上传的问题困扰了一阵子，在看了许多教程和代码后，终于是初步完成了，感谢github上开源代码的前辈！</p>
+
+<p>抱歉我的这个项目并不开源，不过跟本文相关的代码也都贴出来了。
+另外我还想弄一个乐高爱好者的网站，那个项目会是开源的。</p>
+
+<p>以上重点说明的都是我觉得开始没弄明白的问题，主要是model怎么设计的，controller怎么执行的，view怎么构造的。</p>
+
+<p>至于<a href="https://github.com/blueimp/jQuery-File-Upload">Jquery-File-Upload</a>怎么用，我觉得主要还是看项目主页上的说明吧，我暂时也就是用了basic的功能。</p>
+
+<p>如果这篇文章能给任何人带来帮助，那么我会非常开心。</p>
+</div>
+
+
+<div class="meta">
+	<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-09-19T09:45:00+08:00" pubdate data-updated="true">Sep 19<span>th</span>, 2013</time></div>
+	<div class="tags">
+
+
+	<a class='category' href='/blog/categories/mongoid/'>mongoid</a>, <a class='category' href='/blog/categories/rails/'>rails</a>
+
+
+</div>
+	
+	<div class="comments"><a href="#disqus_thread">Comments</a></div>
+	
+</div>
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+		
+		
+		
+		
+	</div>
+	
+</div>
+
+
+
+<section id="comment">
+    <h2 class="title">Comments</h2>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+</div>
+	<footer id="footer" class="inner">Copyright &copy; 2013
+
+    李梓赫
+
+</footer>
+	<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'loveltyoic';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://loveltyoic.github.io/blog/2013/09/19/jquery-fileupload/';
+        var disqus_url = 'http://loveltyoic.github.io/blog/2013/09/19/jquery-fileupload/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//go.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+</body>
+</html>

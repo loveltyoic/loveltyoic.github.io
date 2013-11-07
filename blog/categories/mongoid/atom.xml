@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: mongoid | 大李子的博客]]></title>
+  <link href="http://loveltyoic.github.io/blog/categories/mongoid/atom.xml" rel="self"/>
+  <link href="http://loveltyoic.github.io/"/>
+  <updated>2013-11-04T20:28:55+08:00</updated>
+  <id>http://loveltyoic.github.io/</id>
+  <author>
+    <name><![CDATA[李梓赫]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[在Rails4.0中使用Jquery-File-Upload上传多个文件]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/09/19/jquery-fileupload/"/>
+    <updated>2013-09-19T09:45:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/09/19/jquery-fileupload</id>
+    <content type="html"><![CDATA[<p>在网站中上传图片是一个非常普遍的需求。感谢强大的<a href="https://github.com/blueimp/jQuery-File-Upload">Jquery-File-Upload</a>，让这个功能简化了许多。
+需要说明，我的项目环境是<code>Rails4.0+Mongoid+carrierwave</code>，需求是对于一辆汽车，上传多张图片并展示出来。
+下面就记录一下我是如何实现的。</p>
+
+<!-- more -->
+
+
+<h3>Model</h3>
+
+<p>```ruby picture.rb
+class Picture
+  include Mongoid::Document</p>
+
+<p>  belongs_to :car
+  mount_uploader :image, PictureUploader # 挂载carrierwave</p>
+
+<p>  field :image, type: String
+  field :image_cache, type: String
+  field :car_token, type: String</p>
+
+<p>  def output_json</p>
+
+<pre><code>{
+  "name" =&gt; read_attribute(:image),
+  "size" =&gt; image.size,
+  "url" =&gt; image.url,
+  "delete_url" =&gt; id,
+  "picture_id" =&gt; id,
+  "delete_type" =&gt; "DELETE"
+}.to_json
+</code></pre>
+
+<p>  end</p>
+
+<p>end
+```</p>
+
+<p>```ruby car.rb
+class Car
+  include Mongoid::Document</p>
+
+<p>  has_many :pictures, autosave: true</p>
+
+<p>  def generate_token</p>
+
+<pre><code>self.token = loop do
+  random_token = SecureRandom.urlsafe_base64
+  break random_token if Car.find(token: random_token).nil?
+end
+</code></pre>
+
+<p>  end
+end
+<code>``
+说明：一辆车可以有多张图片，因此用has_many关联。
+那么这个</code>generate_token`是做什么的呢，一会在controller中就会看到用处了！</p>
+
+<h3>Controller</h3>
+
+<ul>
+<li><p>因为Rails4.0应用<code>strong parameters</code>, 因此需要在控制器中做白名单处理，不然参数会被禁止传入。
+```ruby
+class PicturesController &lt; ApplicationController</p>
+
+<p>def destroy
+  car = Car.find(params[:car_id])
+  @pic = car.pictures.find(params[:id])
+  @pic.destroy
+  respond_to do |format|
+    format.js
+  end
+end</p>
+
+<p>def create
+  @picture = Picture.new(pic_params)
+  if @picture.save
+    respond_to do |format|
+      format.html {
+        render :json => @picture.output_json,
+        :content_type => &lsquo;text/html&rsquo;,
+        :layout => false
+      }
+      format.json {
+        render :json => @picture.output_json
+      }
+    end
+  else
+    render :json => [{:error => &ldquo;custom_failure&rdquo;}], :status => 304
+  end
+end</p>
+
+<p>def pic_params
+  params.require(:picture).permit(:image, :image_cache, :car_token)
+end</p></li>
+</ul>
+
+
+<p>end
+<code>
+* 对于CarsController,只节选关键的`new`和`create`。
+</code>ruby
+  def new</p>
+
+<pre><code>@car = Car.new
+@car.generate_token
+</code></pre>
+
+<p>  end</p>
+
+<p>  def create</p>
+
+<pre><code>@car = Car.new(car_params)
+@car.pictures &lt;&lt; Picture.where(car_token: @car.token)
+@car.user_id = current_user.id
+respond_to do |format|
+  if @car.save!
+    flash[:success] = '车辆信息创建成功!'
+    format.html { redirect_to @car }
+    format.json { render json: @car, status: :created, location: @car }
+  else
+    format.html { render action: "new" }
+    format.json { render json: @car.errors, status: :unprocessable_entity }
+  end
+end
+</code></pre>
+
+<p>  end
+  def car_params</p>
+
+<pre><code>params.require(:car).permit(:token)
+</code></pre>
+
+<p>  end
+```</p>
+
+<h3>View表单</h3>
+
+<p>```erb
+&lt;%= simple_form_for @car, :html => {:multipart => true} do |f| %></p>
+
+<pre><code>&lt;%= f.input :token, as: :hidden, value: @car.token %&gt;
+&lt;%= f.submit "保存", class: 'btn btn-primary btn-large' %&gt;
+</code></pre>
+
+<p>&lt;% end %>
+&lt;%= form_for Picture.new, :html => {:multipart => true, id: &lsquo;new_picture&rsquo;} do |f| %>
+  &lt;%= f.hidden_field :car_token, value: @car.token %>
+  &lt;%= f.file_field :image, multiple: true, name: &lsquo;picture[image]&rsquo; %>
+&lt;% end %></p>
+
+<script>
+$(function () {
+    $('#new_picture').fileupload({ #调用Jquery-File-Upload
+      dataType: 'json',
+      progressall: function (e, data) {
+        var progress = parseInt(data.loaded / data.total * 100, 10);
+        console.log(progress);
+        $('#progress .progress-bar').css(
+            'width', progress + '%'
+        );
+      },
+      done: function (e, data) {
+        
+      }
+    });
+});
+</script>
+
+
+<p>```</p>
+
+<h3>说明</h3>
+
+<p>从表单代码可以看出，这里是在一个页面中放了两个表单，一个是car的，另一个是picture的。</p>
+
+<p>图片用<a href="https://github.com/blueimp/jQuery-File-Upload">Jquery-File-Upload</a>上传，实际上是调用了jquery的ajax。</p>
+
+<p>当一次上传多张图片时，实际上是<strong>用ajax将图片一张接一张的上传</strong>。</p>
+
+<p>举例来说，如果我一次上传了3张图片，那么就有3个ajax请求，每一次请求都会触发PicturesController的<code>create action</code>。</p>
+
+<p>此时的数据库中，就有了3个picture对象，也就是3张图片。</p>
+
+<p>那么，怎样才能将这3张图片与表单中的<code>@car</code>关联起来呢？</p>
+
+<p>一般来说，当我们上传图片时，父对象car还没有save到数据库中。</p>
+
+<p>因此就需要一个域将car与picture关联起来，其实就是额外构造的外键 —— car中的token。</p>
+
+<p>在car的<code>new action</code>中，通过generate_token构造外键。</p>
+
+<p>然后在异步上传图片后，在picture的<code>create action</code>中存储这个token。</p>
+
+<p>当用户填写表单其他部分并提交后，触发car的<code>create action</code>，此时根据token在数据库中查找对应的picture，加入到<code>car.pictures</code>队列，至此picture就和car关联起来了。</p>
+
+<h3>写在最后</h3>
+
+<p>被上传的问题困扰了一阵子，在看了许多教程和代码后，终于是初步完成了，感谢github上开源代码的前辈！</p>
+
+<p>抱歉我的这个项目并不开源，不过跟本文相关的代码也都贴出来了。
+另外我还想弄一个乐高爱好者的网站，那个项目会是开源的。</p>
+
+<p>以上重点说明的都是我觉得开始没弄明白的问题，主要是model怎么设计的，controller怎么执行的，view怎么构造的。</p>
+
+<p>至于<a href="https://github.com/blueimp/jQuery-File-Upload">Jquery-File-Upload</a>怎么用，我觉得主要还是看项目主页上的说明吧，我暂时也就是用了basic的功能。</p>
+
+<p>如果这篇文章能给任何人带来帮助，那么我会非常开心。</p>
+]]></content>
+  </entry>
+  
+</feed>

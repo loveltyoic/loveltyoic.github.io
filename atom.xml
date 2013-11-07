@@ -1,0 +1,1162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[大李子的博客]]></title>
+  <link href="http://loveltyoic.github.io/atom.xml" rel="self"/>
+  <link href="http://loveltyoic.github.io/"/>
+  <updated>2013-11-04T20:28:55+08:00</updated>
+  <id>http://loveltyoic.github.io/</id>
+  <author>
+    <name><![CDATA[李梓赫]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[在Rails4.0中使用Jquery-File-Upload上传多个文件]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/09/19/jquery-fileupload/"/>
+    <updated>2013-09-19T09:45:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/09/19/jquery-fileupload</id>
+    <content type="html"><![CDATA[<p>在网站中上传图片是一个非常普遍的需求。感谢强大的<a href="https://github.com/blueimp/jQuery-File-Upload">Jquery-File-Upload</a>，让这个功能简化了许多。
+需要说明，我的项目环境是<code>Rails4.0+Mongoid+carrierwave</code>，需求是对于一辆汽车，上传多张图片并展示出来。
+下面就记录一下我是如何实现的。</p>
+
+<!-- more -->
+
+
+<h3>Model</h3>
+
+<figure class='code'><figcaption><span>picture.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">Picture</span>
+</span><span class='line'>  <span class="kp">include</span> <span class="ss">Mongoid</span><span class="p">:</span><span class="ss">:Document</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">belongs_to</span> <span class="ss">:car</span>
+</span><span class='line'>  <span class="n">mount_uploader</span> <span class="ss">:image</span><span class="p">,</span> <span class="no">PictureUploader</span> <span class="c1"># 挂载carrierwave</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">field</span> <span class="ss">:image</span><span class="p">,</span> <span class="ss">type</span><span class="p">:</span> <span class="nb">String</span>
+</span><span class='line'>  <span class="n">field</span> <span class="ss">:image_cache</span><span class="p">,</span> <span class="ss">type</span><span class="p">:</span> <span class="nb">String</span>
+</span><span class='line'>  <span class="n">field</span> <span class="ss">:car_token</span><span class="p">,</span> <span class="ss">type</span><span class="p">:</span> <span class="nb">String</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">output_json</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>      <span class="s2">&quot;name&quot;</span> <span class="o">=&gt;</span> <span class="n">read_attribute</span><span class="p">(</span><span class="ss">:image</span><span class="p">),</span>
+</span><span class='line'>      <span class="s2">&quot;size&quot;</span> <span class="o">=&gt;</span> <span class="n">image</span><span class="o">.</span><span class="n">size</span><span class="p">,</span>
+</span><span class='line'>      <span class="s2">&quot;url&quot;</span> <span class="o">=&gt;</span> <span class="n">image</span><span class="o">.</span><span class="n">url</span><span class="p">,</span>
+</span><span class='line'>      <span class="s2">&quot;delete_url&quot;</span> <span class="o">=&gt;</span> <span class="nb">id</span><span class="p">,</span>
+</span><span class='line'>      <span class="s2">&quot;picture_id&quot;</span> <span class="o">=&gt;</span> <span class="nb">id</span><span class="p">,</span>
+</span><span class='line'>      <span class="s2">&quot;delete_type&quot;</span> <span class="o">=&gt;</span> <span class="s2">&quot;DELETE&quot;</span>
+</span><span class='line'>    <span class="p">}</span><span class="o">.</span><span class="n">to_json</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>car.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">Car</span>
+</span><span class='line'>  <span class="kp">include</span> <span class="ss">Mongoid</span><span class="p">:</span><span class="ss">:Document</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">has_many</span> <span class="ss">:pictures</span><span class="p">,</span> <span class="ss">autosave</span><span class="p">:</span> <span class="kp">true</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">generate_token</span>
+</span><span class='line'>    <span class="nb">self</span><span class="o">.</span><span class="n">token</span> <span class="o">=</span> <span class="kp">loop</span> <span class="k">do</span>
+</span><span class='line'>      <span class="n">random_token</span> <span class="o">=</span> <span class="no">SecureRandom</span><span class="o">.</span><span class="n">urlsafe_base64</span>
+</span><span class='line'>      <span class="k">break</span> <span class="n">random_token</span> <span class="k">if</span> <span class="no">Car</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="ss">token</span><span class="p">:</span> <span class="n">random_token</span><span class="p">)</span><span class="o">.</span><span class="n">nil?</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>说明：一辆车可以有多张图片，因此用has_many关联。
+那么这个<code>generate_token</code>是做什么的呢，一会在controller中就会看到用处了！</p>
+
+<h3>Controller</h3>
+
+<ul>
+<li>因为Rails4.0应用<code>strong parameters</code>, 因此需要在控制器中做白名单处理，不然参数会被禁止传入。</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">PicturesController</span> <span class="o">&lt;</span> <span class="no">ApplicationController</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">destroy</span>
+</span><span class='line'>    <span class="n">car</span> <span class="o">=</span> <span class="no">Car</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">params</span><span class="o">[</span><span class="ss">:car_id</span><span class="o">]</span><span class="p">)</span>
+</span><span class='line'>    <span class="vi">@pic</span> <span class="o">=</span> <span class="n">car</span><span class="o">.</span><span class="n">pictures</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">params</span><span class="o">[</span><span class="ss">:id</span><span class="o">]</span><span class="p">)</span>
+</span><span class='line'>    <span class="vi">@pic</span><span class="o">.</span><span class="n">destroy</span>
+</span><span class='line'>    <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|</span>
+</span><span class='line'>      <span class="nb">format</span><span class="o">.</span><span class="n">js</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">create</span>
+</span><span class='line'>    <span class="vi">@picture</span> <span class="o">=</span> <span class="no">Picture</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">pic_params</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="vi">@picture</span><span class="o">.</span><span class="n">save</span>
+</span><span class='line'>      <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|</span>
+</span><span class='line'>        <span class="nb">format</span><span class="o">.</span><span class="n">html</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">render</span> <span class="ss">:json</span> <span class="o">=&gt;</span> <span class="vi">@picture</span><span class="o">.</span><span class="n">output_json</span><span class="p">,</span>
+</span><span class='line'>          <span class="ss">:content_type</span> <span class="o">=&gt;</span> <span class="s1">&#39;text/html&#39;</span><span class="p">,</span>
+</span><span class='line'>          <span class="ss">:layout</span> <span class="o">=&gt;</span> <span class="kp">false</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="nb">format</span><span class="o">.</span><span class="n">json</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">render</span> <span class="ss">:json</span> <span class="o">=&gt;</span> <span class="vi">@picture</span><span class="o">.</span><span class="n">output_json</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">else</span>
+</span><span class='line'>      <span class="n">render</span> <span class="ss">:json</span> <span class="o">=&gt;</span> <span class="o">[</span><span class="p">{</span><span class="ss">:error</span> <span class="o">=&gt;</span> <span class="s2">&quot;custom_failure&quot;</span><span class="p">}</span><span class="o">]</span><span class="p">,</span> <span class="ss">:status</span> <span class="o">=&gt;</span> <span class="mi">304</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">pic_params</span>
+</span><span class='line'>    <span class="n">params</span><span class="o">.</span><span class="n">require</span><span class="p">(</span><span class="ss">:picture</span><span class="p">)</span><span class="o">.</span><span class="n">permit</span><span class="p">(</span><span class="ss">:image</span><span class="p">,</span> <span class="ss">:image_cache</span><span class="p">,</span> <span class="ss">:car_token</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>对于CarsController,只节选关键的<code>new</code>和<code>create</code>。</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="k">def</span> <span class="nf">new</span>
+</span><span class='line'>    <span class="vi">@car</span> <span class="o">=</span> <span class="no">Car</span><span class="o">.</span><span class="n">new</span>
+</span><span class='line'>    <span class="vi">@car</span><span class="o">.</span><span class="n">generate_token</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">create</span>
+</span><span class='line'>    <span class="vi">@car</span> <span class="o">=</span> <span class="no">Car</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">car_params</span><span class="p">)</span>
+</span><span class='line'>    <span class="vi">@car</span><span class="o">.</span><span class="n">pictures</span> <span class="o">&lt;&lt;</span> <span class="no">Picture</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">car_token</span><span class="p">:</span> <span class="vi">@car</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
+</span><span class='line'>    <span class="vi">@car</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">current_user</span><span class="o">.</span><span class="n">id</span>
+</span><span class='line'>    <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|</span>
+</span><span class='line'>      <span class="k">if</span> <span class="vi">@car</span><span class="o">.</span><span class="n">save!</span>
+</span><span class='line'>        <span class="n">flash</span><span class="o">[</span><span class="ss">:success</span><span class="o">]</span> <span class="o">=</span> <span class="s1">&#39;车辆信息创建成功!&#39;</span>
+</span><span class='line'>        <span class="nb">format</span><span class="o">.</span><span class="n">html</span> <span class="p">{</span> <span class="n">redirect_to</span> <span class="vi">@car</span> <span class="p">}</span>
+</span><span class='line'>        <span class="nb">format</span><span class="o">.</span><span class="n">json</span> <span class="p">{</span> <span class="n">render</span> <span class="ss">json</span><span class="p">:</span> <span class="vi">@car</span><span class="p">,</span> <span class="ss">status</span><span class="p">:</span> <span class="ss">:created</span><span class="p">,</span> <span class="ss">location</span><span class="p">:</span> <span class="vi">@car</span> <span class="p">}</span>
+</span><span class='line'>      <span class="k">else</span>
+</span><span class='line'>        <span class="nb">format</span><span class="o">.</span><span class="n">html</span> <span class="p">{</span> <span class="n">render</span> <span class="ss">action</span><span class="p">:</span> <span class="s2">&quot;new&quot;</span> <span class="p">}</span>
+</span><span class='line'>        <span class="nb">format</span><span class="o">.</span><span class="n">json</span> <span class="p">{</span> <span class="n">render</span> <span class="ss">json</span><span class="p">:</span> <span class="vi">@car</span><span class="o">.</span><span class="n">errors</span><span class="p">,</span> <span class="ss">status</span><span class="p">:</span> <span class="ss">:unprocessable_entity</span> <span class="p">}</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">car_params</span>
+</span><span class='line'>    <span class="n">params</span><span class="o">.</span><span class="n">require</span><span class="p">(</span><span class="ss">:car</span><span class="p">)</span><span class="o">.</span><span class="n">permit</span><span class="p">(</span><span class="ss">:token</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>View表单</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='erb'><span class='line'><span class="cp">&lt;%=</span> <span class="n">simple_form_for</span> <span class="vi">@car</span><span class="p">,</span> <span class="ss">:html</span> <span class="o">=&gt;</span> <span class="p">{</span><span class="ss">:multipart</span> <span class="o">=&gt;</span> <span class="kp">true</span><span class="p">}</span> <span class="k">do</span> <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">    </span><span class="cp">&lt;%=</span> <span class="n">f</span><span class="o">.</span><span class="n">input</span> <span class="ss">:token</span><span class="p">,</span> <span class="ss">as</span><span class="p">:</span> <span class="ss">:hidden</span><span class="p">,</span> <span class="ss">value</span><span class="p">:</span> <span class="vi">@car</span><span class="o">.</span><span class="n">token</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">    </span><span class="cp">&lt;%=</span> <span class="n">f</span><span class="o">.</span><span class="n">submit</span> <span class="s2">&quot;保存&quot;</span><span class="p">,</span> <span class="ss">class</span><span class="p">:</span> <span class="s1">&#39;btn btn-primary btn-large&#39;</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="cp">&lt;%</span> <span class="k">end</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="cp">&lt;%=</span> <span class="n">form_for</span> <span class="no">Picture</span><span class="o">.</span><span class="n">new</span><span class="p">,</span> <span class="ss">:html</span> <span class="o">=&gt;</span> <span class="p">{</span><span class="ss">:multipart</span> <span class="o">=&gt;</span> <span class="kp">true</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="s1">&#39;new_picture&#39;</span><span class="p">}</span> <span class="k">do</span> <span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%=</span> <span class="n">f</span><span class="o">.</span><span class="n">hidden_field</span> <span class="ss">:car_token</span><span class="p">,</span> <span class="ss">value</span><span class="p">:</span> <span class="vi">@car</span><span class="o">.</span><span class="n">token</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">  </span><span class="cp">&lt;%=</span> <span class="n">f</span><span class="o">.</span><span class="n">file_field</span> <span class="ss">:image</span><span class="p">,</span> <span class="ss">multiple</span><span class="p">:</span> <span class="kp">true</span><span class="p">,</span> <span class="nb">name</span><span class="p">:</span> <span class="s1">&#39;picture[image]&#39;</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="cp">&lt;%</span> <span class="k">end</span> <span class="cp">%&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">&lt;script&gt;</span>
+</span><span class='line'><span class="x">$(function () {</span>
+</span><span class='line'><span class="x">    $(&#39;#new_picture&#39;).fileupload({ #调用Jquery-File-Upload</span>
+</span><span class='line'><span class="x">      dataType: &#39;json&#39;,</span>
+</span><span class='line'><span class="x">      progressall: function (e, data) {</span>
+</span><span class='line'><span class="x">        var progress = parseInt(data.loaded / data.total * 100, 10);</span>
+</span><span class='line'><span class="x">        console.log(progress);</span>
+</span><span class='line'><span class="x">        $(&#39;#progress .progress-bar&#39;).css(</span>
+</span><span class='line'><span class="x">            &#39;width&#39;, progress + &#39;%&#39;</span>
+</span><span class='line'><span class="x">        );</span>
+</span><span class='line'><span class="x">      },</span>
+</span><span class='line'><span class="x">      done: function (e, data) {</span>
+</span><span class='line'><span class="x">        </span>
+</span><span class='line'><span class="x">      }</span>
+</span><span class='line'><span class="x">    });</span>
+</span><span class='line'><span class="x">});</span>
+</span><span class='line'><span class="x">&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>说明</h3>
+
+<p>从表单代码可以看出，这里是在一个页面中放了两个表单，一个是car的，另一个是picture的。</p>
+
+<p>图片用<a href="https://github.com/blueimp/jQuery-File-Upload">Jquery-File-Upload</a>上传，实际上是调用了jquery的ajax。</p>
+
+<p>当一次上传多张图片时，实际上是<strong>用ajax将图片一张接一张的上传</strong>。</p>
+
+<p>举例来说，如果我一次上传了3张图片，那么就有3个ajax请求，每一次请求都会触发PicturesController的<code>create action</code>。</p>
+
+<p>此时的数据库中，就有了3个picture对象，也就是3张图片。</p>
+
+<p>那么，怎样才能将这3张图片与表单中的<code>@car</code>关联起来呢？</p>
+
+<p>一般来说，当我们上传图片时，父对象car还没有save到数据库中。</p>
+
+<p>因此就需要一个域将car与picture关联起来，其实就是额外构造的外键 —— car中的token。</p>
+
+<p>在car的<code>new action</code>中，通过generate_token构造外键。</p>
+
+<p>然后在异步上传图片后，在picture的<code>create action</code>中存储这个token。</p>
+
+<p>当用户填写表单其他部分并提交后，触发car的<code>create action</code>，此时根据token在数据库中查找对应的picture，加入到<code>car.pictures</code>队列，至此picture就和car关联起来了。</p>
+
+<h3>写在最后</h3>
+
+<p>被上传的问题困扰了一阵子，在看了许多教程和代码后，终于是初步完成了，感谢github上开源代码的前辈！</p>
+
+<p>抱歉我的这个项目并不开源，不过跟本文相关的代码也都贴出来了。
+另外我还想弄一个乐高爱好者的网站，那个项目会是开源的。</p>
+
+<p>以上重点说明的都是我觉得开始没弄明白的问题，主要是model怎么设计的，controller怎么执行的，view怎么构造的。</p>
+
+<p>至于<a href="https://github.com/blueimp/jQuery-File-Upload">Jquery-File-Upload</a>怎么用，我觉得主要还是看项目主页上的说明吧，我暂时也就是用了basic的功能。</p>
+
+<p>如果这篇文章能给任何人带来帮助，那么我会非常开心。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Ruby元编程笔记 —— （四） 类定义]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/09/09/metaprogramming5/"/>
+    <updated>2013-09-09T09:14:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/09/09/metaprogramming5</id>
+    <content type="html"><![CDATA[<p><img src="http://farm3.staticflickr.com/2887/9694272518_88a646c15b_o.jpg" alt="" /></p>
+
+<ul>
+<li>类只是一个增强的模块。</li>
+<li>在类（或模块）定义时，类本身充当了当前对象<code>self</code>的角色。</li>
+</ul>
+
+
+<!-- more -->
+
+
+<ul>
+<li>总是有一个当前类存在，当定义一个方法时，该方法将成为当前类的一个实例方法。</li>
+<li>使用<code>class_eval()</code>可以修改当前类。会在一个已存在类的上下文中执行一个块。</li>
+<li><code>class</code>关键字会打开一个新的作用域，而<code>class_eval()</code>使用扁平作用域。</li>
+<li>如果想打开一个类定义并且用<code>def</code>关键字定义方法，则可以选择<code>class_eval()</code>方法。</li>
+<li>在类定义中，当前对象<code>self</code>就是正在定义的类，当前类就是<code>self</code>。如果有一个类的引用，可以用<code>class_eval()</code>或<code>module_eval()</code>打开这个类</li>
+<li>所有的实例变量都属于当前对象<code>self</code></li>
+<li>在类充当<code>self</code>时定义的变量是类实例变量，仅仅可以被类本身访问，而不能被类的实例或子类所访问。</li>
+<li><code>@@</code>开头的是类变量，避免使用。</li>
+<li><code>Class#new()</code>方法可以接受一个参数（所建新类的超类）以及一个块，创建一个匿名类。</li>
+<li>类名不过是一个常量而已，可以给匿名类赋值，相当于给类命名。</li>
+<li>只针对单个对象生效的方法，称为单件方法。</li>
+<li>类方法的实质就是：他们是一个类的单件方法。</li>
+<li>进入该对象的<code>eigenclass</code>的作用域。</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="k">class</span> <span class="o">&lt;&lt;</span> <span class="n">an_object</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><code>instance_eval()</code>方法也会修改当前类：它会将当前类修改为接收者的<code>eigenclass</code>，因此可以在其中定义单件方法。</li>
+<li><code>instance_eval()</code>方法的标准含义是：我想修改<code>self</code>。</li>
+<li>可以在子类中调用父类的类方法。</li>
+<li>一个对象的<code>eigenclass</code>的超类是这个对象的类；一个类的<code>eigenclass</code>的超类是这个类的超类的<code>eigenclass</code>。</li>
+<li>当类包含模块时，他获得的是该模块的实例方法——而不是类方法。</li>
+<li>在类的<code>eigenclass</code>中包含模块，类的<code>eigenclass</code>的实例方法就成了类方法，这种技术称为类扩展<code>Class Extension</code>。更一般的，可以把模块混合到对象的<code>eigenclass</code>，称为对象扩展<code>Object Extension</code>。</li>
+<li><code>Object#extend()</code>方法可以简化这种扩展</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="n">obj</span><span class="o">.</span><span class="n">extend</span> <span class="no">MyModule</span> <span class="c1">#对象扩展</span>
+</span><span class='line'>  <span class="k">class</span> <span class="nc">MyClass</span>   <span class="c1">#类扩展</span>
+</span><span class='line'>    <span class="kp">extend</span> <span class="no">MyModule</span>
+</span><span class='line'>  <span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>使用<code>alias</code>关键字，可以给方法取别名。
+用法：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="k">alias</span> <span class="p">:</span><span class="err">新方法名</span> <span class="p">:</span><span class="err">原方法名</span>
+</span><span class='line'>  <span class="n">alias_method</span> <span class="p">:</span><span class="err">新方法名</span><span class="p">,</span> <span class="p">:</span><span class="err">原方法名</span>  <span class="c1">#注意：方法版本，带逗号</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>重定义一个方法时，并不真正修改这个方法，仍然可以通过别名访问原始的方法。</li>
+<li>环绕别名<code>Around Alias</code> 技巧：
+
+<ol>
+<li>给方法定义一个别名</li>
+<li>重定义这个方法</li>
+<li>在重定义方法中调用原始的方法</li>
+</ol>
+</li>
+<li>类宏<code>Class Macro</code>只是普通的类方法，可以用在类定义而已。</li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Ruby元编程笔记 —— （三） 代码块]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/09/08/metaprogramming4/"/>
+    <updated>2013-09-08T20:14:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/09/08/metaprogramming4</id>
+    <content type="html"><![CDATA[<p><img src="http://farm3.staticflickr.com/2812/9684885545_7ffe7a3990_c.jpg" alt="" />
+* 块是一种控制作用域<code>scope</code>的强大手段，作用域指的是哪些代码可以看到哪些变量和方法。
+* 调用一个方法时，才可以定义一个块，块会直接传递给这个方法，然后该方法可以用<code>yield</code>关键字回调这个块。</p>
+
+<!-- more -->
+
+
+<ul>
+<li><code>Kernel#block_given?()</code>询问当前的方法调用是否包含块。</li>
+<li>局部变量、实例变量、self &hellip;都是绑定在对象上的名字，简称绑定<code>binding</code>。块既包含代码，也包含一组绑定。</li>
+<li>当创建块时会获取到局部绑定，然后把快练同他自己的绑定传递给一个方法。把块称为闭包<code>closure</code>。意味着一个块可以获取局部绑定，病一直带着他们。</li>
+<li>可以在块内部定义额外的绑定，但是这些绑定在块结束时就会消失。</li>
+<li><code>Kernel#local_variables()</code>方法跟踪绑定的名字。</li>
+<li>只要程序切换了作用域，一些绑定就会被全新的绑定所取代。不过，同一对象的实例变量始终存在于作用域中。</li>
+<li><p>作用域门：</p>
+
+<ul>
+<li>class 类定义</li>
+<li>module 模块定义</li>
+<li>def 方法<br/>
+每个关键字充当一个作用域门，关闭前一个作用域，同时打开一个新的作用域。</li>
+</ul>
+</li>
+<li><p>在<code>main</code>对象扮演<code>self</code>的角色时，可以访问一个顶级实例变量。</p></li>
+<li>类和模块中定义的代码会被立即执行，方法中的代码只有被调用时才执行。</li>
+<li><p>用<code>Class.new()</code>代替<code>class</code></p>
+
+<p><code>Module#define_method()</code>代替<code>def</code></p>
+
+<p>可以让一个作用域看到另一个作用域中的变量。如果两个作用域被挤压在一起，他们就可以共享各自的变量，称之为一个扁平作用域<code>Flat Scope</code>。</p></li>
+<li>假定想在一组方法之间共享一个变量，但是又不希望其他方法访问这个变量，就可以把这些方法定义在那个变量所在的扁平作用域中，称为共享作用域。</li>
+<li>如果要让绑定穿越作用域门，那么可以用方法调用来代替作用域门：用一个闭包获取当前的绑定，并把这个闭包传递给方法。</li>
+<li>把传递给<code>instance_eval()</code>的块称为一个上下文探针<code>Context Probe</code>，它在对象的上下文中执行。</li>
+<li>创建一个对象，仅仅是为了在其中执行块，这样的对象称为洁净室<code>Clean Room</code></li>
+<li>一个<code>Proc</code>就是一个转换成对象的块，通过把块传给<code>Proc.new</code>来创建一个<code>Proc</code>，并用<code>Proc#call()</code>方法来执行这个由块转换来的对象。这种技术称为延迟执行<code>Deferred Evaluation</code>。</li>
+<li><code>lambda() 和 proc() 是 Kernel方法</code>，用于把块转化为<code>Proc</code>。</li>
+<li>块像是方法的额外的匿名参数。在方法中通过<code>yield</code>运行一个块，但不能：
+
+<ul>
+<li>把这个块传递给另外一个方法</li>
+<li>把这个块转换为一个<code>Proc</code></li>
+</ul>
+</li>
+<li>将块附加到一个绑定上，可以给这个方法添加一个特殊的参数，这个参数必须是参数列表中的最后一个，且以<code>&amp;</code>符号开头，<code>&amp;</code>操作符的真正含义：这是一个<code>Proc</code>对象，我想把它当成一个块来使用。使用<code>&amp;</code>把<code>Proc</code>转换为块。</li>
+<li>使用<code>lambda()</code>创建的<code>Proc</code>称为<code>lambda</code></li>
+<li>在<code>lambda</code>中，<code>return</code>表示从这个<code>lambda</code>中返回；在<code>proc</code>中，<code>return</code>表示从定义<code>proc</code>的作用域中返回。</li>
+<li>如果调用<code>lambda</code>时的参数数量不对，会抛出<code>ArgumentError</code>异常。</li>
+<li>简洁<code>lambda</code></li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="o">-&gt;</span> <span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="p">{</span> <span class="n">x</span><span class="o">+</span><span class="mi">1</span> <span class="p">}</span>
+</span><span class='line'>  <span class="c1">#等同于</span>
+</span><span class='line'>  <span class="nb">lambda</span> <span class="p">{</span> <span class="o">|</span><span class="n">x</span><span class="o">|</span> <span class="n">x</span><span class="o">+</span><span class="mi">1</span> <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>调用<code>Object#method()</code>方法可以获得一个用<code>Method</code>对象表示的方法，可以用<code>Method#call</code>对它进行调用。</li>
+<li><code>lambda</code>在定义它的作用域中执行（他是一个闭包），而<code>Method</code>对象会在自身所在对象的作用域中执行。</li>
+<li><code>Method#unbind()</code>把方法和绑定的对象分离，<code>Method#bind()</code>可以把这个<code>UnboundMethod</code>再次绑定到同属一个类的另一个对象上。</li>
+<li>可以调用<code>Method#to_proc()</code>方法把<code>Method</code>对象转换为<code>Proc</code>对象，也可以用<code>define_method()</code>方法把块转换为<code>Method</code>。</li>
+<li>可调用对象是可以执行的代码片段，他们有自己的作用域，有如下几种形式的可调用对象：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="err">块</span>        <span class="o">-|</span>
+</span><span class='line'>  <span class="nb">proc</span>       <span class="o">|--&gt;</span>  <span class="c1">#定义自身的作用域中执行</span>
+</span><span class='line'>  <span class="nb">lambda</span>    <span class="o">-|</span>
+</span><span class='line'>  <span class="err">方法</span>              <span class="c1">#在所绑定对象的作用域中执行  </span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>DSL(Domain-Specific Language)领域专属语言.</li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Ruby元编程笔记 —— （二） 方法]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/09/03/metaprogramming3/"/>
+    <updated>2013-09-03T15:07:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/09/03/metaprogramming3</id>
+    <content type="html"><![CDATA[<p><img src="http://farm3.staticflickr.com/2888/9656919280_8ab725e72a_c.jpg" alt="" /></p>
+
+<ul>
+<li>通过<code>Object#send()</code>取代点标记符来调用<code>MyClass#my_method()</code>方法：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">obj</span> <span class="o">=</span> <span class="no">MyClass</span><span class="o">.</span><span class="n">new</span>
+</span><span class='line'><span class="n">obj</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="ss">:my_method</span><span class="p">,</span><span class="n">arguments</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>  通过<code>send()</code>方法，调用的方法名可以是一个参数，这样可以在代码运行期动态决定调用那种方法，这种技术称为动态派发（<code>Dynamic Dispatch</code>）。</p>
+
+<!-- more -->
+
+
+<ul>
+<li><p>字符串转符号
+<code>String#to_sym()或String#intern()</code></p>
+
+<p>符号转字符串
+<code>Symbol#to_s()或Symbol#id2name()</code></p></li>
+<li>动态定义方法（<code>Dynamic Method</code>）
+在类或模块中，使用<code>define_method()</code>定义一个方法:</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">MyClass</span>
+</span><span class='line'>  <span class="n">define_method</span> <span class="ss">:my_method</span> <span class="k">do</span> <span class="o">|</span><span class="n">my_arg</span><span class="o">|</span>
+</span><span class='line'>    <span class="n">my_arg</span> <span class="o">*</span> <span class="mi">3</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>可以用send()调用任何方法，甚至私有方法。</li>
+<li>匹配括号中正则表达式的字符串会存放在$变量中。<code>=~</code>是正则匹配符。</li>
+<li><code>method_missing</code>是<code>Kernel</code>的一个实例方法，所有对象均存在。当调用一个不存在的方法时，<code>Kernel#method_missing()</code>方法回抛出一个<code>NoMethodError</code>进行响应。每一个它处理的消息都带着被调用方法的名字，以及所有调用是传递的参数和块。</li>
+<li>覆写<code>method_missing</code>方法可以调用接收者实际上不存在的方法，这被称为一个幽灵方法</li>
+<li>用<code>super</code>调用被覆写的超类中的同名方法。</li>
+<li>一个捕获幽灵方法调用病吧他们转发给另一个对象的对象（有时也会在转发前后包装一些自己的逻辑），称为动态代理。</li>
+<li>幽灵方法不是真正的方法，不会出现在<code>Object#methods()</code>获得的方法列表中。</li>
+<li>仅在必要时才使用幽灵方法，首先是用一个普通方法来实现功能，当确信代码没有问题时，把这些方法重构到<code>method_missing()</code>中。</li>
+<li>当幽灵方法和一个真实方法发生名字冲突时，后者会胜出。</li>
+<li>应该在代理类中删除绝大多数继承来的方法，这就是白板（<code>Blank Slate</code>）类。</li>
+<li><p>用<code>Module#undef_method()</code>删除所有（包括继承）方法；</p>
+
+<p>用<code>Module#remove_method()</code>删除自身定义的方法。</p></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Ruby元编程笔记 —— （一） 对象模型]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/09/03/metaprogramming2/"/>
+    <updated>2013-09-03T10:27:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/09/03/metaprogramming2</id>
+    <content type="html"><![CDATA[<p><img src="http://farm9.staticflickr.com/8465/8079198551_48f29d2544_c.jpg" alt="" /></p>
+
+<ul>
+<li>打开类<code>（Open Class）</code></li>
+</ul>
+
+
+<p>  在已有类中动态的添加方法。</p>
+
+<ul>
+<li><p>通过<code>Object#methods</code>查看对象的方法，例如数组对象，可以<code>[].methods.grep /正则表达式/</code>查看指定匹配的所有方法名。</p></li>
+<li><p>一个对象的实例变量存在于对象本身，而一个对象的方法存在于对象自身的类，称为类的实例方法。</p></li>
+</ul>
+
+
+<!-- more -->
+
+
+<ul>
+<li><p>一个类只不过是一个增强的<code>Module</code>， 增加了三个方法 —— <code>new(),allocate(),superclass()</code>，<code>superclass</code>返回超类。</p></li>
+<li><p>类自身也是对象，所有的类最终都继承自<code>Object</code>。</p></li>
+<li><p>可以将<code>Module</code>作为命名空间，例如</p></li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="no">Module</span> <span class="no">Book</span>
+</span><span class='line'>  <span class="k">class</span> <span class="nc">Fiction</span>
+</span><span class='line'>    <span class="o">.</span><span class="n">.</span><span class="o">.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>则可以通过<code>Book::Fiction</code>来引用类，有效避免命名冲突。</p>
+
+<ul>
+<li><p>接收者<code>(receiver)</code>就是调用方法时所用的对象，祖先链<code>(ancestors)</code>就是从一个类上溯到其顶级超类的整个类路径，可能包括模块。调用<code>ancestors()</code>方法来获得一个类的祖先链：<code>MyClass.ancestors</code></p></li>
+<li><p>类中<code>include</code>一个模块时，会将这个模块封装成一个匿名类插入祖先链，在类的正上方，但是通过<code>superclass</code>并不会显示这个匿名类。</p></li>
+<li><p>查看类的私有实例方法</p></li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="no">Class</span><span class="o">.</span><span class="n">private_instance_methods</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><code>self</code>的角色通常是由最后一个接收到方法调用的对象来充当，不过，在类和模块定义中（并且在任何方法定义之外），<code>self</code>的角色由这个类或模块担任：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">MyClass</span>
+</span><span class='line'>  <span class="nb">self</span>  <span class="c1">#=&gt; MyClass</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><p>当调用一个方法时，<code>Ruby</code>首先向右一步找到接收者的类，然后一直向上查找祖先链，直到找到该方法，或到达链顶端。</p></li>
+<li><p>当一个类中包含多个<code>Module</code>时，最后一个<code>include</code>的<code>Module</code>最接近这个类，其中的方法被最先找到。</p></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Ruby元编程笔记 —— （零） 引言]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/09/03/metaprogramming1/"/>
+    <updated>2013-09-03T10:20:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/09/03/metaprogramming1</id>
+    <content type="html"><![CDATA[<p><img src="http://farm9.staticflickr.com/8446/7758810948_ce36812ac9_c.jpg" alt="" /></p>
+
+<ul>
+<li>元编程是编写在运行时操纵语言构件的代码。</li>
+<li>内省<code>（introspection）</code></li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">Greating</span>
+</span><span class='line'>  <span class="o">.</span><span class="n">.</span><span class="o">.</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="n">my_obj</span> <span class="o">=</span> <span class="no">Greeting</span><span class="o">.</span><span class="n">new</span>
+</span><span class='line'><span class="n">my_obj</span><span class="o">.</span><span class="n">class</span> <span class="c1">#=&gt; Greeting 查看对象的类</span>
+</span><span class='line'><span class="n">my_obj</span><span class="o">.</span><span class="n">class</span><span class="o">.</span><span class="n">instance_methods</span><span class="p">(</span><span class="kp">false</span><span class="p">)</span> <span class="c1">#=&gt; 查看类的实例方法，false表示只返回自身定义的，不包括继承方法</span>
+</span><span class='line'><span class="n">my_obj</span><span class="o">.</span><span class="n">instance_variables</span> <span class="c1">#=&gt; 查看对象的实例变量</span>
+</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[在Rails中使用JQuery+Ajax]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/07/30/ajax/"/>
+    <updated>2013-07-30T15:04:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/07/30/ajax</id>
+    <content type="html"><![CDATA[<p><img src="http://farm3.staticflickr.com/2866/9653990063_9ba4fed207_c.jpg" alt="alt text" /></p>
+
+<p>一直感觉对Rails中如何使用Ajax感觉很迷糊，今天特地做了一些实验，总算弄清楚一些，赶快记下来。</p>
+
+<!-- more -->
+
+
+<p>首先建立了一个<code>controller test_pages</code>,代码如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">TestPagesController</span> <span class="o">&lt;</span> <span class="no">ApplicationController</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">test_page</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">test_format</span>
+</span><span class='line'>    <span class="n">respond_to</span> <span class="k">do</span> <span class="o">|</span><span class="nb">format</span><span class="o">|</span>
+</span><span class='line'>      <span class="nb">format</span><span class="o">.</span><span class="n">js</span>
+</span><span class='line'>      <span class="nb">format</span><span class="o">.</span><span class="n">json</span> <span class="p">{</span> <span class="n">render</span> <span class="ss">json</span><span class="p">:</span> <span class="p">{</span>
+</span><span class='line'>        <span class="ss">text</span><span class="p">:</span> <span class="s1">&#39;respond_to json!&#39;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nb">name</span><span class="p">:</span> <span class="s1">&#39;lzh&#39;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后在<code>test_page.html.erb</code>中建立几个<code>ajax</code>的链接和按钮，观察他们的表现。
+代码如下:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nx">$</span><span class="p">(</span><span class="nb">document</span><span class="p">).</span><span class="nx">ready</span><span class="p">(</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nx">$</span><span class="p">(</span><span class="s2">&quot;#js1&quot;</span><span class="p">).</span><span class="nx">click</span><span class="p">(</span> <span class="kd">function</span><span class="p">(){</span>
+</span><span class='line'>      <span class="nx">$</span><span class="p">.</span><span class="nx">getScript</span><span class="p">(</span><span class="s2">&quot;/test_format&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nx">$</span><span class="p">(</span><span class="s2">&quot;#js2&quot;</span><span class="p">).</span><span class="nx">click</span><span class="p">(</span> <span class="kd">function</span><span class="p">(){</span>
+</span><span class='line'>      <span class="nx">$</span><span class="p">.</span><span class="nx">ajax</span><span class="p">({</span>
+</span><span class='line'>        <span class="nx">dataType</span><span class="o">:</span> <span class="s2">&quot;script&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nx">url</span><span class="o">:</span> <span class="s2">&quot;/test_format&quot;</span>
+</span><span class='line'>      <span class="p">});</span>
+</span><span class='line'>    <span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nx">$</span><span class="p">(</span><span class="s2">&quot;#json1&quot;</span><span class="p">).</span><span class="nx">bind</span><span class="p">(</span>
+</span><span class='line'>      <span class="s2">&quot;ajax:success&quot;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">event</span><span class="p">,</span><span class="nx">json</span><span class="p">){</span> <span class="nx">alert</span><span class="p">(</span><span class="nx">json</span><span class="p">.</span><span class="nx">text</span><span class="p">);</span> <span class="p">}</span>
+</span><span class='line'>    <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nx">$</span><span class="p">(</span><span class="s2">&quot;#json2&quot;</span><span class="p">).</span><span class="nx">click</span><span class="p">(</span> <span class="kd">function</span><span class="p">(){</span>
+</span><span class='line'>      <span class="nx">$</span><span class="p">.</span><span class="nx">ajax</span><span class="p">({</span>
+</span><span class='line'>        <span class="nx">dataType</span><span class="o">:</span> <span class="s2">&quot;json&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nx">url</span><span class="o">:</span> <span class="s2">&quot;/test_format&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nx">success</span><span class="o">:</span> <span class="kd">function</span><span class="p">(</span><span class="nx">json</span><span class="p">){</span>
+</span><span class='line'>          <span class="nx">alert</span><span class="p">(</span><span class="nx">json</span><span class="p">.</span><span class="nx">text</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="p">});</span>
+</span><span class='line'>    <span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nx">$</span><span class="p">(</span><span class="s2">&quot;#json3&quot;</span><span class="p">).</span><span class="nx">click</span><span class="p">(</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nx">$</span><span class="p">.</span><span class="nx">getJSON</span><span class="p">(</span><span class="s2">&quot;/test_format&quot;</span><span class="p">,</span><span class="kd">function</span><span class="p">(</span><span class="nx">json</span><span class="p">){</span> <span class="nx">alert</span><span class="p">(</span><span class="nx">json</span><span class="p">.</span><span class="nx">text</span><span class="p">);});</span>
+</span><span class='line'>    <span class="p">});</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'><span class="nt">&lt;/script&gt;</span>
+</span><span class='line'><span class="err">&lt;</span>%= link_to &#39;js3&#39;, test_format_path, :remote =&gt; true, &quot;data-type&quot; =&gt; &#39;script&#39; %&gt;
+</span><span class='line'><span class="err">&lt;</span>%= link_to &#39;json1&#39;, test_format_path, id: &quot;json1&quot;, :remote =&gt; true, &quot;data-type&quot; =&gt; &#39;json&#39; %&gt;
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="nt">&lt;button</span> <span class="na">id=</span><span class="s">&quot;js1&quot;</span><span class="nt">&gt;</span>js1<span class="nt">&lt;/button&gt;</span>
+</span><span class='line'><span class="nt">&lt;button</span> <span class="na">id=</span><span class="s">&quot;js2&quot;</span><span class="nt">&gt;</span>js2<span class="nt">&lt;/button&gt;</span>
+</span><span class='line'><span class="nt">&lt;button</span> <span class="na">id=</span><span class="s">&quot;json2&quot;</span><span class="nt">&gt;</span>json2<span class="nt">&lt;/button&gt;</span>
+</span><span class='line'><span class="nt">&lt;button</span> <span class="na">id=</span><span class="s">&quot;json3&quot;</span><span class="nt">&gt;</span>json3<span class="nt">&lt;/button&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nt">&lt;div</span> <span class="na">id=</span><span class="s">&quot;will_change&quot;</span><span class="nt">&gt;&lt;/div&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>为了实现<code>ajax</code>，主要用两种方法，一种是<code>jQuery</code>方法，另一种是<code>helper</code>方法.</p>
+
+<p>以上代码中的<code>#js1,#js2,#js3</code>的行为都是相同的，
+<code>#json1,#json2,#json3</code>也是相同的。</p>
+
+<h2>jQuery方法</h2>
+
+<p>对页面上的元素添加<code>ajax</code>事件，然后在事件触发后执行<code>ajax</code>请求。
+JQuery提供了几种方法，有<strong>$.ajax,$.getScript,$.getJSON,$.load,$.post,$.get</strong></p>
+
+<p>其中</p>
+
+<ul>
+<li>请求<code>js</code>脚本，用<code>$.getScript</code></li>
+<li>请求<code>json</code>数据，用<code>$.getJSON</code></li>
+<li>而<code>$.ajax</code>是最一般化的方法，可以指定所有选项。</li>
+</ul>
+
+
+<p>更详细的说明可以参考《JavaScript权威指南》的JQuery章节。</p>
+
+<h2>helper方法</h2>
+
+<p>通过<code>link_to</code>或<code>button_to</code>创建按钮或链接，只需加入<code>:remote =&gt; true</code>,并且用<code>"data-type" =&gt; 'json'或者'script'</code>来指明请求的数据格式。</p>
+
+<p>如果使用这种方法，因为无法在<code>helper</code>中直接指定回调函数，因此对于<code>json</code>数据，没法直接用，怎么办?
+答案就是在页面的脚本中为其绑定一个<code>ajax</code>事件监听函数！
+就像</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span><span class="p">(</span><span class="s2">&quot;#json1&quot;</span><span class="p">).</span><span class="nx">bind</span><span class="p">(</span>
+</span><span class='line'>  <span class="s2">&quot;ajax:success&quot;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">event</span><span class="p">,</span><span class="nx">json</span><span class="p">){</span> <span class="nx">alert</span><span class="p">(</span><span class="nx">json</span><span class="p">.</span><span class="nx">text</span><span class="p">);</span> <span class="p">}</span>
+</span><span class='line'><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这样，在<code>ajax</code>成功返回后，可以通过一个函数来使用返回的<code>json</code>数据。</p>
+
+<p><strong>这个绑定的<code>function</code>的参数是有规定的</strong>:</p>
+
+<p>第一个参数代表这个事件对象，而第二个参数就是返回的<code>json</code>数据。</p>
+
+<h2>请求格式</h2>
+
+<p>注意到，所有这些请求的<code>url</code>都是相同的<code>/test_format</code>，那么如何根据请求返回相应格式呢，<code>Rails</code>已经帮我们解决了！
+在<code>test_format</code>这个action中，通过<code>respond_to do |format|</code>来根据请求返回对应格式的响应。
+而这个请求格式，就是我们在view页面中通过<code>$.ajax</code>中的<code>dataType</code>或是<code>helper</code>方法中的<code>"data-type"</code>来指定的了。
+比如，当<code>"data-type" =&gt; 'script'或是dataType: 'script'</code>时，对应于<code>format.js</code>。</p>
+
+<p>服务器端会查找<code>format.js.erb</code>,编译后返回<code>format.js</code>这个脚本给客户端。
+<code>format.js.erb</code>的代码如下</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">alert</span><span class="p">(</span><span class="s1">&#39;respond_to js!&#39;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">$</span><span class="p">(</span><span class="s2">&quot;#will_change&quot;</span><span class="p">).</span><span class="nx">html</span><span class="p">(</span><span class="s2">&quot;js has been load&quot;</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>返回的js脚本会立即执行，可以触发动作或是改变页面的元素。
+而json数据就是在回调的<code>function</code>中使用了。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SSH与Git远端仓库]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/07/26/git/"/>
+    <updated>2013-07-26T07:58:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/07/26/git</id>
+    <content type="html"><![CDATA[<p>接触Git时是和GitHub一块用的。对于GitHub的免费用户，其仓库是全公开的。因此如果公司或团队要想使用私有的代码仓库，就需要付费或自己搭建了。
+现在租了VPS，有条件创建自己的远端仓库了。
+下面就记录一下搭建远端仓库的过程。</p>
+
+<!-- more -->
+
+
+<h2>SSH</h2>
+
+<p>目前对远程主机的操作，都是通过SSH来的。步骤如下：</p>
+
+<ul>
+<li>首先，需要在本地机器上产生公私钥对</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh-keygen</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这条命令会在<code>～/.ssh/</code> 这个目录下产生<code>id_rsa</code> 这是私钥，就是本地机器SSH到远程主机时需要向远程主机出示的钥匙，另外生成的<code>id_rsa.pub</code>是公钥。</p>
+
+<ul>
+<li>需要将这个公钥上传到远程主机的认证密钥目录下。</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>scp id_rsa.pub 用户名@主机名:～/.ssh/authorized_keys</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>测试一下</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh -T 用户名@主机名</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>补充</h3>
+
+<p>对于一般都在本地操作的用户来说，第一次接触远程主机操作会有一些迷糊，比如我&hellip;因此再补充记录一下我刚开始不太明白的点：</p>
+
+<ul>
+<li>所谓主机名就是host。我们都知道要在网络上找到一台主机，需要用其IP来寻找，但是IP太长，不如名字好记，因此我们就想通过一个好记的别名来寻找他。在现实网络中，这就是DNS。而我理解hostname就是本地版的DNS，通过hostname来查找主机。比如我的远程主机地址是<code>106.186.24.57</code>，我就可以给它设置一个主机名，比如loveltyoic，这样我的本地机器就会自动将loveltyoic解析为<code>106.186.24.57</code>。
+<code>hostname</code>可以查看设置的主机名。要添加主机名记录，则需要修改<code>/etc/hosts</code>这个文件。一行对应一条记录,例如</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>127.0.0.1       localhost
+</span><span class='line'>106.186.24.57  loveltyoic</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当首次SSH到远程主机上时，会有一些提示,大概意思就是说这是第一次登录到远程主机啊，还不认识啊，要不要把我们的私钥出示给他啊。当然要了（请用麦兜的语气），一路确认。
+后果就是在本地主机~/.ssh/known_hosts里添加了一条远程主机的记录，说明我认识他了，当SSH的时候可以向他出示私钥。</p>
+
+<ul>
+<li>在创建公私钥对的时候，会提示设置口令，这个口令是用户验证本地用户对私钥的访问的，直接回车就不设置口令。如果有口令的话，当需要使用私钥时就会询问口令，感觉很麻烦，我没设置。安全与易用真的是一对冤家啊。
+
+<h2>Git repo</h2>
+
+<p>SSH可以用了，接下来就好办多了。
+首先登录到远程主机，然后：</p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mkdir -p ~/git/fluidcars.com.git
+</span><span class='line'>cd ~/git/fluidcars.com.git
+</span><span class='line'>git --bare init</span></code></pre></td></tr></table></div></figure>
+
+
+<p>一个空的仓库已经建好了，so easy!（耳边响起xx高点读机广告）</p>
+
+<p>之后，就可以把这个远端的仓库当作源了。
+在本地的文件夹中</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git remote add origin 用户名@主机名:git/fluidcars.com.git
+</span><span class='line'>git push origin master</span></code></pre></td></tr></table></div></figure>
+
+
+<p>将master分支push到origin源，也就是指定的远端仓库。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Octopress初体验]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/07/15/shi-yong-octopressxiao-ji/"/>
+    <updated>2013-07-15T11:54:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/07/15/shi-yong-octopressxiao-ji</id>
+    <content type="html"><![CDATA[<p><img src="http://farm4.staticflickr.com/3796/9654815358_f792c648fb_c.jpg" alt="alt text" /></p>
+
+<p>最近看到了octopress，刚好是ruby写的，所以没有理由不试一下。</p>
+
+<p>GitHub提供了博客空间的服务。下面就记录一下我在GitHub上部署octopress的过程。</p>
+
+<!-- more -->
+
+
+<p>开始就是照着<a href="http://octopress.org/docs/">http://octopress.org/docs/</a>上的步骤来呗：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git clone git://github.com/imathis/octopress.git octopress</span></code></pre></td></tr></table></div></figure>
+
+
+<p>就是把octopress的程序拷到本地的文件夹octopress里，当然可以随便命名。</p>
+
+<p>接着把路径切换到这个文件夹中。</p>
+
+<p>然后就和rails的程序比较像了,安装必要的gem</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>bundle install</span></code></pre></td></tr></table></div></figure>
+
+
+<p>最后安装主题</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake install</span></code></pre></td></tr></table></div></figure>
+
+
+<p>感觉把博客放到github还是比较方便的：</p>
+
+<p>首先在github新建个仓库，仓库名需要是<code>username.github.com</code>形式的</p>
+
+<p>比如我的用户名是<code>loveltyoic</code>，那么我新建的就是<code>loveltyoic.github.com</code>。</p>
+
+<p>以下就以这个仓库名为例。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake setup github_pages</span></code></pre></td></tr></table></div></figure>
+
+
+<p>此时会问你github的仓库地址，那么我的就是<code>git@github.com:loveltyoic/loveltyoic.github.com.git</code></p>
+
+<p>按找教程的说法，这个命令会执行6个作用：</p>
+
+<ol>
+<li>设置仓库地址</li>
+<li>将clone时的远程分支origin改为octopress</li>
+<li>然后将第一步的仓库地址设为默认远程分支origin</li>
+<li>从master切换为source分支</li>
+<li>根据仓库地址设置博客地址</li>
+<li>在_deploy文件夹下设置master分支，用于部署</li>
+</ol>
+
+
+<p>稍微解释一下，这个命令会生成一个远程分支origin，其地址就是刚刚输入的仓库地址了，所以这个是可以改的，我之前就是用了https的地址，结果每次都要输入用户名密码，非常麻烦，所以就改成ssh形式的地址。因为我已经设置好了ssh密钥，就可直接push了。</p>
+
+<p>接下来</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake generate
+</span><span class='line'>rake deploy</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这两个命令将生成博客页面，然后将页面拷贝到_deploy文件夹下，并且执行git的<code>add,commit以及push</code>。这样就会在仓库的master分支下产生博客内容了。</p>
+
+<p>最后可以手动将所有源码push到远程仓库的source分支下。</p>
+
+<p>切换到octopress目录</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git add .
+</span><span class='line'>git commit -m 'xxx'
+</span><span class='line'>git push origin source</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这样一个建立在github上的博客就建好了，接下来就该编辑第一篇博客了，Let&rsquo;s go!</p>
+
+<p>首先说明，所有博客源码都会放在source/_posts文件夹内。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake new_post["我的第一篇博客"]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这样就会生成一个markdown格式的源文件，可以用markdown语法编辑啦，括号内就是文章标题。生成的源文件会有一个文件头，在编译时会产生相应的作用，比如关闭评论，添加分类等。</p>
+
+<p>同样可以添加页面</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake new_page["xinyemian"]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这会在source下创建新的文件夹xinyemian，然后在xinyemian下会自动生成<code>index.markdown</code>。
+比如为博客添加个“关于我”的页面并放到导航栏中。
+首先</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake new_page["guan-yu-wo"]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后编辑<code>source/guan-yu-wo/index.markdown</code>，加入自我介绍。</p>
+
+<p>在source/_includes/custom/下放的是个性化页面的东东，因此编辑其中的navigation.html就可以把这个关于我页面加入到导航里啦。
+如下：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;ul class="main-navigation"&gt;
+</span><span class='line'>  &lt;li&gt;&lt;a href="http://loveltyoic.github.io/"&gt;Blog&lt;/a&gt;&lt;/li&gt;
+</span><span class='line'>  &lt;li&gt;&lt;a href="http://loveltyoic.github.io/blog/archives"&gt;Archives&lt;/a&gt;&lt;/li&gt;
+</span><span class='line'>  &lt;li&gt;&lt;a href="http://loveltyoic.github.io/guan-yu-wo/"&gt;关于我&lt;/a&gt;&lt;/li&gt;
+</span><span class='line'>&lt;/ul&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在写完一篇博客后，就该生成以及发布了。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake generate
+</span><span class='line'>rake preview</span></code></pre></td></tr></table></div></figure>
+
+
+<p>首先生成文章页面</p>
+
+<p>然后是在本地预览，会启动一个web服务，用浏览器打开<a href="http://localhost:4000">http://localhost:4000</a>可以预览</p>
+
+<p>如果没有问题，就可以部署到github上了。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake deploy</span></code></pre></td></tr></table></div></figure>
+
+
+<p>部署过后，访问<a href="http://loveltyoic.github.com">http://loveltyoic.github.com</a>，可以看到博客已经更新了。</p>
+
+<p>以上都是最基本的操作了，随着使用慢慢探索吧。</p>
+
+<p>对了，还有个比较重要的内容就是配置文件。</p>
+
+<p>暂时用到的就是根目录下的_config.yml</p>
+
+<p>可以配置博客标题以及附标题，作者等等，根据注释可以大概看懂。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Hello World]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/07/15/hello/"/>
+    <updated>2013-07-15T11:07:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/07/15/hello</id>
+    <content type="html"><![CDATA[<h2>这是我的第一篇octopress博客</h2>
+
+<p>试验成功！</p>
+]]></content>
+  </entry>
+  
+</feed>

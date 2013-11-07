@@ -1,0 +1,247 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Ruby元编程笔记 —— （四） 类定义 - 大李子的博客</title>
+	<meta name="author" content="李梓赫">
+
+	
+	<meta name="description" content="类只是一个增强的模块。
+在类（或模块）定义时，类本身充当了当前对象self的角色。 总是有一个当前类存在，当定义一个方法时，该方法将成为当前类的一个实例方法。
+使用class_eval()可以修改当前类。会在一个已存在类的上下文中执行一个块。
+class关键字会打开一个新的作用域， &hellip;">
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="大李子的博客" type="application/atom+xml">
+	<link rel="canonical" href="">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script async="true" src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	
+</head>
+
+
+<body>
+	<header id="header" class="inner"><h1><a href="/">大李子的博客</a></h1>
+<nav id="main-nav"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</nav>
+<nav id="mobile-nav">
+	<div class="alignleft menu">
+		<a class="button">Menu</a>
+		<div class="container"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+	<li><a href="/about/">About Me</a></li>
+</ul>
+</div>
+	</div>
+	<div class="alignright search">
+		<a class="button"></a>
+		<div class="container">
+			<form action="http://google.com/search" method="get">
+				<input type="text" name="q" results="0">
+				<input type="hidden" name="q" value="site:loveltyoic.github.io">
+			</form>
+		</div>
+	</div>
+</nav>
+<nav id="sub-nav" class="alignright">
+	<div class="social">
+		
+		
+		
+		
+    
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+    
+	</div>
+	<form class="search" action="http://google.com/search" method="get">
+		<input class="alignright" type="text" name="q" results="0">
+		<input type="hidden" name="q" value="site:loveltyoic.github.io">
+	</form>
+</nav>
+
+</header>
+	
+		
+	
+	<div id="content" class="inner"><article class="post">
+	<h2 class="title">Ruby元编程笔记 —— （四） 类定义</h2>
+	<div class="entry-content"><p><img src="http://farm3.staticflickr.com/2887/9694272518_88a646c15b_o.jpg" alt="" /></p>
+
+<ul>
+<li>类只是一个增强的模块。</li>
+<li>在类（或模块）定义时，类本身充当了当前对象<code>self</code>的角色。</li>
+</ul>
+
+
+<!-- more -->
+
+
+<ul>
+<li>总是有一个当前类存在，当定义一个方法时，该方法将成为当前类的一个实例方法。</li>
+<li>使用<code>class_eval()</code>可以修改当前类。会在一个已存在类的上下文中执行一个块。</li>
+<li><code>class</code>关键字会打开一个新的作用域，而<code>class_eval()</code>使用扁平作用域。</li>
+<li>如果想打开一个类定义并且用<code>def</code>关键字定义方法，则可以选择<code>class_eval()</code>方法。</li>
+<li>在类定义中，当前对象<code>self</code>就是正在定义的类，当前类就是<code>self</code>。如果有一个类的引用，可以用<code>class_eval()</code>或<code>module_eval()</code>打开这个类</li>
+<li>所有的实例变量都属于当前对象<code>self</code></li>
+<li>在类充当<code>self</code>时定义的变量是类实例变量，仅仅可以被类本身访问，而不能被类的实例或子类所访问。</li>
+<li><code>@@</code>开头的是类变量，避免使用。</li>
+<li><code>Class#new()</code>方法可以接受一个参数（所建新类的超类）以及一个块，创建一个匿名类。</li>
+<li>类名不过是一个常量而已，可以给匿名类赋值，相当于给类命名。</li>
+<li>只针对单个对象生效的方法，称为单件方法。</li>
+<li>类方法的实质就是：他们是一个类的单件方法。</li>
+<li>进入该对象的<code>eigenclass</code>的作用域。</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="k">class</span> <span class="o">&lt;&lt;</span> <span class="n">an_object</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><code>instance_eval()</code>方法也会修改当前类：它会将当前类修改为接收者的<code>eigenclass</code>，因此可以在其中定义单件方法。</li>
+<li><code>instance_eval()</code>方法的标准含义是：我想修改<code>self</code>。</li>
+<li>可以在子类中调用父类的类方法。</li>
+<li>一个对象的<code>eigenclass</code>的超类是这个对象的类；一个类的<code>eigenclass</code>的超类是这个类的超类的<code>eigenclass</code>。</li>
+<li>当类包含模块时，他获得的是该模块的实例方法——而不是类方法。</li>
+<li>在类的<code>eigenclass</code>中包含模块，类的<code>eigenclass</code>的实例方法就成了类方法，这种技术称为类扩展<code>Class Extension</code>。更一般的，可以把模块混合到对象的<code>eigenclass</code>，称为对象扩展<code>Object Extension</code>。</li>
+<li><code>Object#extend()</code>方法可以简化这种扩展</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="n">obj</span><span class="o">.</span><span class="n">extend</span> <span class="no">MyModule</span> <span class="c1">#对象扩展</span>
+</span><span class='line'>  <span class="k">class</span> <span class="nc">MyClass</span>   <span class="c1">#类扩展</span>
+</span><span class='line'>    <span class="kp">extend</span> <span class="no">MyModule</span>
+</span><span class='line'>  <span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>使用<code>alias</code>关键字，可以给方法取别名。
+用法：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="k">alias</span> <span class="p">:</span><span class="err">新方法名</span> <span class="p">:</span><span class="err">原方法名</span>
+</span><span class='line'>  <span class="n">alias_method</span> <span class="p">:</span><span class="err">新方法名</span><span class="p">,</span> <span class="p">:</span><span class="err">原方法名</span>  <span class="c1">#注意：方法版本，带逗号</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>重定义一个方法时，并不真正修改这个方法，仍然可以通过别名访问原始的方法。</li>
+<li>环绕别名<code>Around Alias</code> 技巧：
+
+<ol>
+<li>给方法定义一个别名</li>
+<li>重定义这个方法</li>
+<li>在重定义方法中调用原始的方法</li>
+</ol>
+</li>
+<li>类宏<code>Class Macro</code>只是普通的类方法，可以用在类定义而已。</li>
+</ul>
+
+</div>
+
+
+<div class="meta">
+	<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-09-09T09:14:00+08:00" pubdate data-updated="true">Sep 9<span>th</span>, 2013</time></div>
+	<div class="tags">
+
+
+	<a class='category' href='/blog/categories/ruby/'>ruby</a>
+
+
+</div>
+	
+	<div class="comments"><a href="#disqus_thread">Comments</a></div>
+	
+</div>
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+		
+		
+		
+		
+	</div>
+	
+</div>
+
+
+
+<section id="comment">
+    <h2 class="title">Comments</h2>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+</div>
+	<footer id="footer" class="inner">Copyright &copy; 2013
+
+    李梓赫
+
+</footer>
+	<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+<script type="text/javascript">
+      var disqus_shortname = 'loveltyoic';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://loveltyoic.github.io/blog/2013/09/09/metaprogramming5/';
+        var disqus_url = 'http://loveltyoic.github.io/blog/2013/09/09/metaprogramming5/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//go.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+</body>
+</html>

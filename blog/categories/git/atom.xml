@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Git | 大李子的博客]]></title>
+  <link href="http://loveltyoic.github.io/blog/categories/git/atom.xml" rel="self"/>
+  <link href="http://loveltyoic.github.io/"/>
+  <updated>2013-11-04T20:28:55+08:00</updated>
+  <id>http://loveltyoic.github.io/</id>
+  <author>
+    <name><![CDATA[李梓赫]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[SSH与Git远端仓库]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/07/26/git/"/>
+    <updated>2013-07-26T07:58:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/07/26/git</id>
+    <content type="html"><![CDATA[<p>接触Git时是和GitHub一块用的。对于GitHub的免费用户，其仓库是全公开的。因此如果公司或团队要想使用私有的代码仓库，就需要付费或自己搭建了。
+现在租了VPS，有条件创建自己的远端仓库了。
+下面就记录一下搭建远端仓库的过程。</p>
+
+<!-- more -->
+
+
+<h2>SSH</h2>
+
+<p>目前对远程主机的操作，都是通过SSH来的。步骤如下：</p>
+
+<ul>
+<li><p>首先，需要在本地机器上产生公私钥对
+<code>
+ssh-keygen
+</code>
+这条命令会在<code>～/.ssh/</code> 这个目录下产生<code>id_rsa</code> 这是私钥，就是本地机器SSH到远程主机时需要向远程主机出示的钥匙，另外生成的<code>id_rsa.pub</code>是公钥。</p></li>
+<li><p>需要将这个公钥上传到远程主机的认证密钥目录下。
+<code>
+scp id_rsa.pub 用户名@主机名:～/.ssh/authorized_keys
+</code></p></li>
+<li><p>测试一下
+<code>
+ssh -T 用户名@主机名
+</code></p>
+
+<h3>补充</h3>
+
+<p>对于一般都在本地操作的用户来说，第一次接触远程主机操作会有一些迷糊，比如我&hellip;因此再补充记录一下我刚开始不太明白的点：</p></li>
+<li><p>所谓主机名就是host。我们都知道要在网络上找到一台主机，需要用其IP来寻找，但是IP太长，不如名字好记，因此我们就想通过一个好记的别名来寻找他。在现实网络中，这就是DNS。而我理解hostname就是本地版的DNS，通过hostname来查找主机。比如我的远程主机地址是<code>106.186.24.57</code>，我就可以给它设置一个主机名，比如loveltyoic，这样我的本地机器就会自动将loveltyoic解析为<code>106.186.24.57</code>。
+<code>hostname</code>可以查看设置的主机名。要添加主机名记录，则需要修改<code>/etc/hosts</code>这个文件。一行对应一条记录,例如
+<code>
+127.0.0.1       localhost
+106.186.24.57  loveltyoic
+</code>
+当首次SSH到远程主机上时，会有一些提示,大概意思就是说这是第一次登录到远程主机啊，还不认识啊，要不要把我们的私钥出示给他啊。当然要了（请用麦兜的语气），一路确认。
+后果就是在本地主机~/.ssh/known_hosts里添加了一条远程主机的记录，说明我认识他了，当SSH的时候可以向他出示私钥。</p></li>
+<li><p>在创建公私钥对的时候，会提示设置口令，这个口令是用户验证本地用户对私钥的访问的，直接回车就不设置口令。如果有口令的话，当需要使用私钥时就会询问口令，感觉很麻烦，我没设置。安全与易用真的是一对冤家啊。</p>
+
+<h2>Git repo</h2>
+
+<p>SSH可以用了，接下来就好办多了。
+首先登录到远程主机，然后：
+<code>
+mkdir -p ~/git/fluidcars.com.git
+cd ~/git/fluidcars.com.git
+git --bare init
+</code>
+一个空的仓库已经建好了，so easy!（耳边响起xx高点读机广告）</p></li>
+</ul>
+
+
+<p>之后，就可以把这个远端的仓库当作源了。
+在本地的文件夹中
+<code>
+git remote add origin 用户名@主机名:git/fluidcars.com.git
+git push origin master
+</code>
+将master分支push到origin源，也就是指定的远端仓库。</p>
+]]></content>
+  </entry>
+  
+</feed>
