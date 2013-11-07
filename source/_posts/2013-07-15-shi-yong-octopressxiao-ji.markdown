@@ -5,7 +5,7 @@ date: 2013-07-15 11:54
 comments: true
 categories: "技术笔记"
 ---
-![alt text](http://farm4.staticflickr.com/3796/9654815358_f792c648fb_c.jpg)
+![](http://farm4.staticflickr.com/3796/9654815358_f792c648fb_c.jpg)
 
 最近看到了octopress，刚好是ruby写的，所以没有理由不试一下。
 
