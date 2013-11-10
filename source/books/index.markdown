@@ -9,7 +9,7 @@ footer: true
 ###Linux
 + [鸟哥的Linux私房菜.基础学习篇][](正在读)
 
-  全面学习Linux使用的好书！
+  全面学习Linux使用的必读之书！
 + [鸟哥的Linux私房菜.服务器架设篇][](正在读)
 + [Linux/Unix设计思想][]
 + [Linux内核设计与实现][]
@@ -19,7 +19,7 @@ footer: true
 ###Ruby
 + [Ruby元编程][]
 
-  读的Ruby的第一本书，讲解的比较生动，推荐。
+  阅读的讲解Ruby的第一本书，看完对Ruby的了解和喜爱又加深了一步。
 + [Programming Ruby][]
 
   能全面了解Ruby的一本书籍。后半本书是参考，可以快速查询到一些模块和类的用法。
