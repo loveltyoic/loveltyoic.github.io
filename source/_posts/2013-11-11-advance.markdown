@@ -1,0 +1,101 @@
+---
+layout: post
+title: "octopress个性化定制"
+date: 2013-11-11 11:41
+comments: true
+categories: octopress
+---
+说明：以下路径名都是相对于安装文件夹根目录。例如我的文件夹命名为`myblog`，则`source`就是指`myblog/source`。
+
+OK,话不多说，快来定制我们的Octopress吧。
+<!-- more -->
+###添加导航
+```
+rake new_page['example']
+```
+这样就生成了一个新的页面'source/example/index.markdown'。
+
+要怎么才能让这个页面在导航栏中显示呢？
+
+只需编辑'source/_includes/custom/navigation.html'。
+
+可以看到，初始时有两条内容，那么只需在下面继续添加即可，大概样子就是
+```html
+<ul class="main-navigation">
+  <li><a href="{{ root_url }}/">日志</a></li>
+  <li><a href="{{ root_url }}/blog/archives">文章归档</a></li>
+  <li><a href="{{ root_url }}/about/">关于我</a></li>
+  <li><a href="{{ root_url }}/books/">我的书单</a></li>
+</ul>
+```
+###添加侧边栏
+侧边栏显示要看安装的主题是否支持，自带的主题是有侧边栏的。下面就来看看怎么个性化自己的侧边栏吧。
+先看`_config.yml`这个配置文件，在大约50多行的位置
+```
+# list each of the sidebar modules you want to include, in the order you want them to appear.
+# To add custom asides, create files in /source/_includes/custom/asides/ and add them to the list like 'custom/asides/custom_aside_name.html'
+default_asides: [custom/asides/about.html, asides/recent_posts.html, asides/github.html, asides/delicious.html, asides/pinboard.html, asides/googleplus.html]
+```
+注释说的很清楚了，这里就是边栏的配置呦。把自定义的边栏加入这个`default_asides`数组中，排在前面的则相应的显示在边栏的前面喽！所以添加一个边栏就是在`source/_includes/custom/asides/`下添加一个页面。比如我的这个about边栏。
+
+另外Octopress已经自带了一些边栏，像最近的文章，github账户概览等等。像github等需要帐号设置，放到一会再说。
+
+```html
+<section>
+  <h1>Hi, 我是李梓赫</h1>
+  <image class='avatar' src="http://www.gravatar.com/avatar/a844b930506d452d63483620a3fec297?s=200">
+</section>
+```
+很简单，只是显示名字和头像，其中头像就用[gravatar][]提供的服务。
+
+###定制CSS
+如果对默认的CSS不满意怎么办？当然可以写自己的主题，但是这个工程毕竟有些大。往往现有的一些主题已经很nice了，我们需要做的只是在其基础上个性化一小部分。
+快看看`sass/custom/`这个文件夹吧。
+
+在`_style.scss`的开头：
+```
+// This File is imported last, and will override other styles in the cascade
+// Add styles here to make changes without digging in too much
+```
+注释真是贴心，告诉了我们这里定义的css是优先级最高的，按你的品位修改吧，let's make some change!
+###添加评论
+当有人看到你的博客后想说点什么该怎么办呢，`web 2.0`讲究的就是互动啊，互联网的精神就是分享啊，没评论怎么行！
+评论这个功能如此之普遍与重要，当然有好多大神与公司为我们做好了，当然要`DRY`，幸福啊！
+Octopress里集成了[Disqus][]，只需注册一个帐号，还有什么比这更简单呢？
+管理评论就去Disqus吧。
+
+帐号注册好了，怎么用呢?问得好，接下来就该说明各种帐号的配置了
+
+###第三方帐号配置
+还是`_config.yml`这个文件，在后半部分，看到如此醒目的注释了么？
+```
+# ----------------------- #
+#   3rd Party Settings    #
+# ----------------------- #
+```
+根据前面提到的，我这里就设置两个帐号做例子：github与disqus。
+```
+# Github repositories
+github_user: loveltyoic
+github_repo_count: 0
+github_show_profile_link: true
+github_skip_forks: true
+
+# Disqus Comments
+disqus_short_name: loveltyoic
+disqus_show_comment_count: true
+```
+
+找到对应的位置，填入你的帐号，done！(比注册帐号更简单的就是填写帐号了吧~)
+PS：还可以用[Google Analytics]来监控你的博客流量哦,只需要申请一个监控ID就搞定了。
+
+###写在最后
+好了，就说这么多吧，我所提到的只是很基础的一小部分，权当抛砖引玉。
+Octopress的文件结构组织已经很清晰了，更多的定制就靠自己慢慢摸索啦。
+希望能给刚接触Octopress的同学一些帮助，至少会有'哦,不过如此，so easy'的感觉。
+另外我的博客配置的源码均可以在我的[github][]看到，欢迎在下面留下你的意见与我交流！
+
+[github]: https://github.com/loveltyoic/loveltyoic.github.io
+[Disqus]: http://disqus.com/
+[gravatar]: http://en.gravatar.com/
+[Google Analytics]: http://www.google.com/analytics/

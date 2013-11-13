@@ -3,13 +3,13 @@ layout: post
 title: "Octopress初体验"
 date: 2013-07-15 11:54
 comments: true
-categories: "技术笔记"
+categories: "Octopress"
 ---
 ![](http://farm4.staticflickr.com/3796/9654815358_f792c648fb_c.jpg)
 
-最近看到了octopress，刚好是ruby写的，所以没有理由不试一下。
+最近看到了[Octopress][]，刚好是ruby写的，所以没有理由不试一下。
 
-GitHub提供了博客空间的服务。下面就记录一下我在GitHub上部署octopress的过程。
+GitHub提供了博客空间的服务。下面就记录一下我在GitHub上部署Octopress的过程。
 <!-- more -->
 开始就是照着<http://octopress.org/docs/>上的步骤来呗：
 {% codeblock %}
@@ -120,4 +120,4 @@ rake deploy
 
 可以配置博客标题以及附标题，作者等等，根据注释可以大概看懂。
 
-
+[Octopress]: http://octopress.org/
