@@ -3,5 +3,84 @@ layout: post
 title: "使用goliath+grape构建API服务"
 date: 2013-11-13 06:51
 comments: true
-categories: 
+categories: api
 ---
+
+无论是自己使用还是提供给开发者，API接口服务都是一件比较普遍且重要的需求。
+花了一天时间了解了一下这个方面，先记录下来。
+
+主要用到了两个gem: [goliath][]与[grape][]。
+他们的文档都比较详细，我就直接具体说下我是怎么做的吧(不管你喜不喜欢，反正我是最喜欢看example了~)。
+<!-- more  -->
+先来分解一下整个流程：
+客户端request => goliath => grape => response
+
+###启动服务
+首先定义一个接收请求的Server(名字随便取):
+```ruby
+class Server < Goliath::API
+
+  def response(env)
+    GitCafe::GitApi.call(env)
+  end
+
+end
+``` 
+可以看到，Goliath会把请求委派给GitApi，然后将返回的数据封装后回传到客户端
+###处理请求
+```ruby
+class GitApi < Grape::API
+    
+    version 'v1', :using => :path
+    format :json
+    
+    resource :commits do
+      desc 'List all commits of a branch'
+      params do
+        requires :path, :type => String
+        requires :repo_name, :type => String
+        requires :branch, :type => String
+      end
+      get '/' do
+        commits = GitCafe::Commit.new(params[:path], params[:repo_name])
+        commits.index(params[:branch])
+      end
+
+    end
+end
+```
+GitApi从Grape::API继承而来，需要按照Grape的格式来定义。
+
++ format指定返回的数据类型，基本上API都是返回json的。
++ resource类似rails中routes的含义.
++ params指定请求中需要包含的参数及类型。
++ 最后是http verb及路径。对匹配的请求，执行相应的处理。
+由于指定了format为json，所以Grape会自动将ruby中的hash准换为json格式的数据，不需要自己动手了。
+比如针对这个请求，我直接返回如下的hash:
+```ruby
+{
+  result: true,
+  data: {
+    branch: branch,
+    commits: commits
+  }
+}
+```
+###API请求
+好了，我们的服务已经构建好了，那么怎么请求这个API服务呢？
+对照着上面的定义，用curl请求的话应该是这样的：
+```sh
+curl -X GET -d "path=test&repo_name=test_repo&branch=master" localhost:9000/v1/commits
+```
+在host后面的'v1'就是在GitApi中指定的版本号了，而commits就是resourse的名字。
+
+暂时了解的就是这么多了，只是很基础的实现了功能，等以后有需求的时候再更深入的研究一下吧。
+
+完整的代码请猛击[github][]
+
+
+
+
+[github]: https://github.com/loveltyoic/grit
+[goliath]: https://github.com/postrank-labs/goliath
+[grape]: https://github.com/intridea/grape

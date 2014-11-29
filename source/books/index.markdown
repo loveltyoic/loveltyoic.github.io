@@ -7,7 +7,7 @@ sharing: true
 footer: true
 ---
 ###Linux
-+ [鸟哥的Linux私房菜.基础学习篇][](正在读)
++ [鸟哥的Linux私房菜.基础学习篇][]
 
   全面学习Linux使用的必读之书！
 + [鸟哥的Linux私房菜.服务器架设篇][](正在读)
@@ -17,6 +17,9 @@ footer: true
   买了至今还没看...
 
 ###Ruby
++ [The Well-Grounded Rubyist][]
+
+  Ruby进阶
 + [Ruby元编程][]
 
   阅读的讲解Ruby的第一本书，看完对Ruby的了解和喜爱又加深了一步。
@@ -25,6 +28,9 @@ footer: true
   能全面了解Ruby的一本书籍。后半本书是参考，可以快速查询到一些模块和类的用法。
 
 ###Rails
++ [The Rails 4 Way][]
+
+	Rails进阶
 + [Agile Web Development with Rails 4][]
   
   Rails入门必读，当时看的是Rails 3版本的，已更新到Rails 4版本。
@@ -66,17 +72,21 @@ footer: true
 
 ###程序员自我修养
 + [浪潮之巅][]
-+ [松本行弘的程序世界][](正在读)
++ [松本行弘的程序世界][]
 + [数学之美][]
 + [黑客与画家][]
 + [MacTalk·人生元编程][]
 + [程序员修炼之道][](正在读)
 + [Perl语言入门][]
-+ [Pro Git][](正在读)
++ [Pro Git][]
++ [失控][](正在读)
 
   个人觉得学习Git必读。全面又深入的了解Git的使用与原理。
 
 ###创业
++ [激荡三十年][]
+
+  改革是如何发生的？
 + [重来][]
 + [精益创业][](正在读)
 + [拆掉思维里的墙][]
@@ -113,7 +123,6 @@ footer: true
 以下是我想要看的书，列出来提醒自己，读完了再移上去。
 
 + [大数据时代][]
-+ [失控][]
 + [UNIX编程艺术][]
 + [代码大全][]
 + [重构(Ruby版)][]
@@ -168,3 +177,6 @@ footer: true
 [算法导论]: http://book.douban.com/subject/20432061/
 [Perl语言入门]: http://book.douban.com/subject/4088038/ 
 [Ruby on Rails Tutorial]: http://railstutorial-china.org/
+[The Well-Grounded Rubyist]: http://www.manning.com/black2/
+[激荡三十年]: http://book.douban.com/subject/3151575/
+[The Rails 4 Way]: https://leanpub.com/tr4w

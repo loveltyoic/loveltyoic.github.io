@@ -392,14 +392,37 @@ task :list do
 end
 
 def add_book
+
+  lines = File.readlines('source/books/index.markdown')
   puts '输入书名:'
   title = STDIN.gets.chomp
   puts '输入链接:'
   link = STDIN.gets.chomp
-  File.open('source/books/index.markdown', 'a') do |file|
-    file.puts "+ [#{title}][]"
-    file.puts "[#{title}]: #{link}"
+  puts '输入评论:'
+  comment = STDIN.gets.chomp
+  puts '选择分类'
+  categories = []
+  lines.each_with_index do |line, index|
+    if /^###(.+)$/ =~ line
+      print $1+' '
+      categories << { name: $1, line: index}
+    end
   end
+  puts "\n"
+
+  category = STDIN.gets.chomp
+  cat = categories.find { |cat| cat[:name] == category }
+
+  if cat 
+    lines.insert(cat[:line]+1, "+ [#{title}][]\n\n\t#{comment}\n")
+  else       
+    lines.insert(categories.last[:line], '###'+category+"\n+ [#{title}][]\n\n\t#{comment}\n")
+  end
+  lines << "[#{title}]: #{link}"
+  File.open('source/books/index.markdown','w') do |file|
+    lines.each { |line| file.puts line }
+  end
+  
 end
 
 desc "add one book"
