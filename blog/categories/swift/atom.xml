@@ -1,0 +1,1778 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Swift | Think Different]]></title>
+  <link href="http://loveltyoic.github.io/blog/categories/swift/atom.xml" rel="self"/>
+  <link href="http://loveltyoic.github.io/"/>
+  <updated>2015-06-23T17:00:32+08:00</updated>
+  <id>http://loveltyoic.github.io/</id>
+  <author>
+    <name><![CDATA[李梓赫]]></name>
+    <email><![CDATA[loveltyoic@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[在Swift中使用NSOperation 和NSOperationQueue]]></title>
+    <link href="http://loveltyoic.github.io/blog/2015/02/03/use-nsoperation-nsoperationqueue-swift/"/>
+    <updated>2015-02-03T17:41:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2015/02/03/use-nsoperation-nsoperationqueue-swift</id>
+    <content type="html"><![CDATA[<blockquote><p>译自<a href="http://www.raywenderlich.com/76341/use-nsoperation-nsoperationqueue-swift">NSOperation and NSOperationQueue Tutorial in Swift</a>。</p></blockquote>
+
+<p>每个人都有这样沮丧的经历：在iOS或Mac应用中，点一个按钮或输入一些文字，突然 —— 界面失去响应。</p>
+
+<p>在Mac上，用户不得不盯着沙漏或转圈圈的图标直到重新响应。而在iOS应用中，用户期望程序能立刻响应他们的点触。响应性不佳的程序让人感到笨拙缓慢，通常会受到差评。</p>
+
+<p>保持程序响应性是一件说起来容易做起来难的事。一旦你的应用需要执行很多任务，事情很快变得复杂起来。当在主线程中执行繁重的任务时，没办法保证UI响应。</p>
+
+<p>可怜的开发者该怎么办？解决办法就是通过并发将工作量从主线程中转移出去。并发意味着程序同时执行多个工作流（或线程）—— 从而在执行任务的同时保持UI响应。</p>
+
+<p>在iOS中实现并发的一种方式是使用 <strong>NSOperation</strong> 和 <strong>NSOperationQueue</strong>。在这篇教程中，你会学到怎样使用它们！你从一个完全不使用并发的应用起步，所以它看起来很慢。接下来你会重构这个应用，加入并发 —— 但愿 —— 会提供更好的响应性。</p>
+
+<!-- more -->
+
+
+<h2>起步</h2>
+
+<p>示例项目的功能就是用tableview来展示经过滤镜处理的图片。图片会从网络下载，然后添加滤镜，最后展示在tableview中。</p>
+
+<p>下面是应用的示意图：</p>
+
+<p><img src="http://cdn5.raywenderlich.com/wp-content/uploads/2012/08/NSOperation_model_stalled.png" alt="" /></p>
+
+<p>初始模型</p>
+
+<hr />
+
+<h3>第一次尝试</h3>
+
+<p>下载<a href="http://cdn1.raywenderlich.com/wp-content/uploads/2014/10/ClassicPhotos-Starter6_1_1.zip">示例工程</a>。</p>
+
+<blockquote><p><strong>注意</strong>：所有图片来源于<a href="http://sxc.hu/">stock.xchng</a>。一些图片有意的拼错名字，用来测试下载失败的情况。</p></blockquote>
+
+<p>运行工程，（最终）你会看到应用展示一列图片。试着滚动列表。很痛苦，不是吗？</p>
+
+<p><img src="http://cdn1.raywenderlich.com/wp-content/uploads/2014/07/classicphotos-stalled-screenshot-213x320.png" alt="" /></p>
+
+<p>所有的动作都发生在 <strong>ListViewController.swift</strong> 中，并且大多数都在<code>tableView(_:cellForRowAtIndexPath:)</code>里。</p>
+
+<p>检查一下这个方法，注意到有两件事情很繁重：</p>
+
+<ol>
+<li><strong>从网上加载图片数据</strong>。即使这是很简单的工作，应用仍然要等待下载完成才可以继续向下执行。</li>
+<li><strong>用Core Image为图片添加滤镜</strong>。方法为图片添加sepia滤镜。如果想了解更多Core Image滤镜，查看<a href="http://www.raywenderlich.com/?p=76285">Beginning Core Image in Swift</a>。</li>
+</ol>
+
+
+<p>除此之外，你还在第一次请求时从网络加载图片列表：</p>
+
+<p><code>
+ lazy var photos = NSDictionary(contentsOfURL:dataSourceURL)
+</code></p>
+
+<p>所有这些工作都是在主线程中执行的。因为主线程需要响应用户操作，所以让主线程忙于网络加载或是渲染图片会扼杀应用的响应能力。你可以通过Xcode的gauges视图快速查看到这种影响。在程序运行时，展开 <strong>Debug navigator</strong> (Command-6)然后选择 <strong>CPU</strong> 。</p>
+
+<p><img src="http://cdn1.raywenderlich.com/wp-content/uploads/2014/07/gauges.png" alt="Gauges View" /></p>
+
+<p>你可以看到线程1（主线程）中的尖峰。想了解更多细节，可以使用<a href="http://www.raywenderlich.com/?p=23037">Instruments</a>。</p>
+
+<p>是时候思考一下如何提升用户体验了！</p>
+
+<h3>任务（Tasks，线程（Threads）和进程（Processes）</h3>
+
+<p>在深入学习这篇教程之前，需要首先熟悉一些技术概念：</p>
+
+<ul>
+<li><strong>任务</strong>：一件需要完成的工作。</li>
+<li><strong>线程</strong>：操作系统所提供的机制，使得一个单独的应用程序可以同时执行多个指令。</li>
+<li><strong>进程</strong>：一大块可执行代码，可以由多个线程组成。</li>
+</ul>
+
+
+<blockquote><p><strong>注意</strong>：在iOS和OS X中，线程功能由POSIX线程API（或pthreads）提供。这是很底层的操作，稍有不慎便会引发错误；并且线程的错误很难发现。</p>
+
+<p>Foundation框架包含一个称作NSThread的类，它更容易使用，但是用它来管理多个线程仍然很令人头疼。NSOperation 和 NSOperationQueue是更高层的类，使用它们操作多线程会更加简单。</p></blockquote>
+
+<p><img src="http://cdn1.raywenderlich.com/wp-content/uploads/2012/08/Process_Thread_Task.png" alt="Process, Thread, Task" /></p>
+
+<p>如你所见，进程可以包含多个线程，每个线程可以同时执行多个任务。</p>
+
+<p>在上图中，线程2在读文件，与此同时线程1在执行UI操作。这和你在iOS中组织代码的方式相同 —— 主线程执行UI相关的工作，同时从属线程执行慢速或需要长时间运行的任务，比如读文件，网络请求等。</p>
+
+<h3>NSOperation vs. Grand Central Dispatch(GCD)</h3>
+
+<p>你可能听说过GCD。简单说来，GCD由语言特性，运行时(runtime)库，系统优化组成，它提供了系统级的改进来支持多核硬件在iOS和OS X下的并发。如想了解更多GCD的内容，可以读我们的<a href="http://www.raywenderlich.com/?p=4295">教程</a>。</p>
+
+<p>快速比较一下两者，帮助你选择何时使用GCD或NSOperation：</p>
+
+<ul>
+<li>GCD以一种轻量级的方式来表示并发的工作。你不会规划（schedule）这些工作，而是由系统来为你规划。在任务间添加依赖会很头疼。取消或挂起任务需要额外的工作量！:]</li>
+<li><strong>NSOperation</strong> 较之GCD增加了一些额外的开销，但是你可以在多个任务间添加依赖，并且可以重用，取消或是挂起它们。</li>
+</ul>
+
+
+<p>这篇教程会使用 <strong>NSOperation</strong> 是因为你需要关心tableview的表现以及电量消耗，在用户滚动屏幕时，你要能够取消那些已经划出屏幕的图片的任务。即使操作是在后台进程中，但是如果有大量工作在后台队列等待执行，应用的表现仍然会难以忍受。</p>
+
+<h2>重定义的App模型</h2>
+
+<p>是时候重新定义先前的非线程模型了！如果你仔细观察先前的模型，你会发现有三个可改善的地方，它们导致了线程陷入困境。通过分离并放置到单独的线程，主线程得到解放并保证UI响应性。</p>
+
+<p><img src="http://cdn3.raywenderlich.com/wp-content/uploads/2012/08/NSOperation_model_improved.png" alt="" /></p>
+
+<p>改良模型</p>
+
+<hr />
+
+<p>为了突破程序的瓶颈，你需要一个线程响应用户交互，一个线程下载数据和图片，以及一个线程为图片添加滤镜。在新模型中，应用从主线程开始并加载一个空的tableview。同时，应用程序启动第二个线程下载数据。</p>
+
+<p>一旦数据下载完成，你会重新加载tableview。这必须在主线程完成，因为涉及到UI。此时，tableview知道有多少行，并且知道每个图片的URL，但是它还没有实际的图片！如果此时你立即开始下载所有图片，那会非常低效，因为你不需要一次性下载所有图片！</p>
+
+<p>怎样改进？</p>
+
+<p>更好的模型是仅仅下载那些当前屏幕中可见的图片。所以你的首要任务是询问tableview哪些行可见，然后再下载它们。同时，在图片下载完成前不能为它添加滤镜。因此，只有在未添加滤镜的图片等待处理的情况下才应该执行添加滤镜的代码。</p>
+
+<p>为了使程序看起来响应更灵敏，图片在下载后应该立刻呈现。然后开始为图片添加滤镜，最后更新UI来展示滤镜图片。下图展示了处理的流程：</p>
+
+<p><img src="http://cdn4.raywenderlich.com/wp-content/uploads/2012/09/NSOperation_workflow.png" alt="" /></p>
+
+<p>为了达成目标，你需要追踪图片当前是否正在下载，是否下载完成，或者滤镜是否添加完成。你同样需要追踪操作的状态，以及它是下载操作还是滤镜操作，这样在用户滚动时你才能取消，暂停或继续这些操作。</p>
+
+<p>好的！你已经准备好写代码了！:]</p>
+
+<p>打开工程，添加新的 <strong>Swift文件</strong> 并命名为 <strong>PhotoOperations.swift</strong>。添加如下代码：</p>
+
+<p>```
+import UIKit</p>
+
+<p>// This enum contains all the possible states a photo record can be in
+enum PhotoRecordState {
+  case New, Downloaded, Filtered, Failed
+}</p>
+
+<p>class PhotoRecord {
+  let name:String
+  let url:NSURL
+  var state = PhotoRecordState.New
+  var image = UIImage(named: &ldquo;Placeholder&rdquo;)</p>
+
+<p>  init(name:String, url:NSURL) {</p>
+
+<pre><code>self.name = name
+self.url = url
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<blockquote><p><strong>注意</strong>：确保在文件顶部 <strong>import UIKit</strong>。默认情况下，Xcode只会在Swift文件中 import Foundation。</p></blockquote>
+
+<p>这个简单的类表示app中展示的图片，其中包含当前状态，新建记录默认是 <strong>.New</strong>。图片默认显示为占位图片。</p>
+
+<p>为了追踪每个操作的状态，你需要一个单独的类。添加如下定义到 <strong>PhotoOperations.swift</strong>：</p>
+
+<p>```
+class PendingOperations {
+  lazy var downloadsInProgress = <a href="">NSIndexPath:NSOperation</a>
+  lazy var downloadQueue:NSOperationQueue = {</p>
+
+<pre><code>var queue = NSOperationQueue()
+queue.name = "Download queue"
+queue.maxConcurrentOperationCount = 1
+return queue
+}()
+</code></pre>
+
+<p>  lazy var filtrationsInProgress = <a href="">NSIndexPath:NSOperation</a>
+  lazy var filtrationQueue:NSOperationQueue = {</p>
+
+<pre><code>var queue = NSOperationQueue()
+queue.name = "Image Filtration queue"
+queue.maxConcurrentOperationCount = 1
+return queue
+}()
+</code></pre>
+
+<p>}
+```</p>
+
+<p>这个类包含两个字典(dictionaries)来追踪进行中的和等待中的下载和滤镜操作，以及两种操作队列。</p>
+
+<p>所有值都是惰性的，意味着它们只有在第一次使用时才会被初始化。这可以优化应用的表现。</p>
+
+<p>创建一个 <code>NSOperationQueue</code> 非常简单。为队列命名很有帮助，因为名字会在Instruments或调试器中出现。<code>maxConcurrentOperationCount</code>设成1是出于这篇教程考虑，这能够让你看到任务一个接一个完成。你可以移掉这行代码，让队列自己决定可以同时处理多少操作 —— 可以进一步提升性能。</p>
+
+<p>队列怎样决定同时运行多少任务？好问题！:] 这取决于硬件。默认情况下，<code>NSOperationQueue</code>会在后台做一些运算以决定什么设置是最适合当前平台的，然后会启动最大可能数量的线程。</p>
+
+<p>思考下面的例子。假设系统处于空闲状态，有大量资源可用，所以队列可以启动8个线程。而下一次运行程序时，系统可能忙于其他消耗资源的任务，因此队列只启动了两个线程。因为你设置了最大并发操作数，当前的应用同一时刻只能执行一个操作。</p>
+
+<blockquote><p><strong>注意</strong>：你可能好奇为什么要追踪所有进行中和等待中的任务。既然队列有一个<code>operations</code>方法返回任务数组，为什么不用它呢？在这个项目中，这么做不是很高效。因为你需要追踪哪个任务对应到tableview中的哪一行，这会导致每次都遍历数组。而将操作保存在字典中，以index path为键（key），查询就会很高效且迅速。</p></blockquote>
+
+<p>是时候关注下载和滤镜任务了。添加下面的代码到 <strong>PhotoOperations.swift</strong>：</p>
+
+<p>```
+class ImageDownloader: NSOperation {
+  //1
+  let photoRecord: PhotoRecord</p>
+
+<p>  //2
+  init(photoRecord: PhotoRecord) {</p>
+
+<pre><code>self.photoRecord = photoRecord
+</code></pre>
+
+<p>  }</p>
+
+<p>  //3
+  override func main() {</p>
+
+<pre><code>//4
+if self.cancelled {
+  return
+}
+//5
+let imageData = NSData(contentsOfURL:self.photoRecord.url)
+
+//6
+if self.cancelled {
+  return
+}
+
+//7
+if imageData?.length &gt; 0 {
+  self.photoRecord.image = UIImage(data:imageData!)
+  self.photoRecord.state = .Downloaded
+}
+else
+{
+  self.photoRecord.state = .Failed
+  self.photoRecord.image = UIImage(named: "Failed")
+}
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p><code>NSOperation</code>是一个抽象类，它被设计成基类让子类继承。每个子类表示一种特定的 <strong>任务</strong>。</p>
+
+<p>注释：</p>
+
+<ol>
+<li>添加对<code>PhotoRecord</code>的常量引用。</li>
+<li>创建一个指定构造函数来传入photo record。</li>
+<li>在子类中重载<code>NSOperation</code>的<code>main</code>方法来执行实际的任务。</li>
+<li>在开始执行前检查撤消状态。任务在试图执行繁重的工作前应该检查它是否已经被撤消。</li>
+<li>下载图片。</li>
+<li>再一次检查撤销状态。</li>
+<li>如果有数据，创建一个图片对象并加入记录，然后更改状态。如果没有数据，将记录标记为失败并设置失败图片。</li>
+</ol>
+
+
+<p>接下来，创建另一个滤镜任务！添加如下代码到 <strong>PhotoOperations.swift</strong> 底部：</p>
+
+<p>```
+class ImageFiltration: NSOperation {
+  let photoRecord: PhotoRecord</p>
+
+<p>  init(photoRecord: PhotoRecord) {</p>
+
+<pre><code>self.photoRecord = photoRecord
+</code></pre>
+
+<p>  }</p>
+
+<p>  override func main () {</p>
+
+<pre><code>if self.cancelled {
+  return
+}
+
+if self.photoRecord.state != .Downloaded {
+  return
+}
+
+if let filteredImage = self.applySepiaFilter(self.photoRecord.image!) {
+  self.photoRecord.image = filteredImage
+  self.photoRecord.state = .Filtered
+}
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>看起来和下载任务的代码很相似，除了你对图片应用滤镜（还没实现的方法，编译器会报错）而非下载。</p>
+
+<p>添加缺失的滤镜方法到 <code>ImageFiltration</code>类：</p>
+
+<p>```
+func applySepiaFilter(image:UIImage) &ndash;> UIImage? {
+  let inputImage = CIImage(data:UIImagePNGRepresentation(image))</p>
+
+<p>  if self.cancelled {</p>
+
+<pre><code>return nil
+</code></pre>
+
+<p>  }
+  let context = CIContext(options:nil)
+  let filter = CIFilter(name:&ldquo;CISepiaTone&rdquo;)
+  filter.setValue(inputImage, forKey: kCIInputImageKey)
+  filter.setValue(0.8, forKey: &ldquo;inputIntensity&rdquo;)
+  let outputImage = filter.outputImage</p>
+
+<p>  if self.cancelled {</p>
+
+<pre><code>return nil
+</code></pre>
+
+<p>  }</p>
+
+<p>  let outImage = context.createCGImage(outputImage, fromRect: outputImage.extent())
+  let returnImage = UIImage(CGImage: outImage)
+  return returnImage
+}
+```</p>
+
+<p>图片滤镜和在<code>ListViewController</code>中的实现相同。它被移到这里，从而单独在后台执行。再一次，你应该经常检查撤销状态；应该在开销大的方法调用前后都执行检查。一旦滤镜完成，设置photo record实例。</p>
+
+<p>很好！现在你拥有了处理后台任务用到的所有工具。是时候改进view controller了。</p>
+
+<p>切换至 <strong>ListViewController.swift</strong> 并删除 <code>lazy var photos</code>属性声明。替换为如下声明：</p>
+
+<p><code>
+var photos = [PhotoRecord]()
+let pendingOperations = PendingOperations()
+</code></p>
+
+<p>创建<code>PhotoRecord</code>数组来记录图片，并用<code>PendingOperations</code>来管理任务。</p>
+
+<p>在类中添加一个新方法来下载列表中的图片：</p>
+
+<p>```
+func fetchPhotoDetails() {
+  let request = NSURLRequest(URL:dataSourceURL!)
+  UIApplication.sharedApplication().networkActivityIndicatorVisible = true</p>
+
+<p>  NSURLConnection.sendAsynchronousRequest(request, queue: NSOperationQueue.mainQueue()) {response,data,error in</p>
+
+<pre><code>if data != nil {
+  let datasourceDictionary = NSPropertyListSerialization.propertyListFromData(data,
+    mutabilityOption: .Immutable, format: nil, errorDescription: nil) as NSDictionary
+
+  for(key : AnyObject,value : AnyObject) in datasourceDictionary {
+    let name = key as? String
+    let url = NSURL(string:value as? String ?? "")
+    if name != nil &amp;&amp; url != nil {
+      let photoRecord = PhotoRecord(name:name!, url:url!)
+      self.photos.append(photoRecord)
+    }
+  }
+
+  self.tableView.reloadData()
+}
+
+if error != nil {
+  let alert = UIAlertView(title:"Oops!",message:error.localizedDescription, delegate:nil, cancelButtonTitle:"OK")
+  alert.show()
+}
+UIApplication.sharedApplication().networkActivityIndicatorVisible = false
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>这个方法执行异步网络请求，当完成后，会在主队列中执行完成闭包。当下载完成后，属性列表数据会存入<code>NSDictionary</code>并进一步转化成<code>PhotoRecord</code>数组。这里没有直接用到<code>NSOperation</code>，而是使用<code>NSOperationQueue.mainQueue()</code>来获取主队列。</p>
+
+<p>在<code>viewDidLoad</code>最后调用新方法：
+<code>
+fetchPhotoDetails()
+</code></p>
+
+<p>接下来，找到<code>tableView(_:cellForRowAtIndexPath:)</code>并替换成下面的实现：</p>
+
+<p>```
+override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) &ndash;> UITableViewCell {
+  let cell = tableView.dequeueReusableCellWithIdentifier(&ldquo;CellIdentifier&rdquo;, forIndexPath: indexPath) as UITableViewCell</p>
+
+<p>  //1
+  if cell.accessoryView == nil {</p>
+
+<pre><code>let indicator = UIActivityIndicatorView(activityIndicatorStyle: .Gray)
+cell.accessoryView = indicator
+</code></pre>
+
+<p>  }
+  let indicator = cell.accessoryView as UIActivityIndicatorView</p>
+
+<p>  //2
+  let photoDetails = photos[indexPath.row]</p>
+
+<p>  //3
+  cell.textLabel?.text = photoDetails.name
+  cell.imageView?.image = photoDetails.image</p>
+
+<p>  //4
+  switch (photoDetails.state){
+  case .Filtered:</p>
+
+<pre><code>indicator.stopAnimating()
+</code></pre>
+
+<p>  case .Failed:</p>
+
+<pre><code>indicator.stopAnimating()
+cell.textLabel?.text = "Failed to load"
+</code></pre>
+
+<p>  case .New, .Downloaded:</p>
+
+<pre><code>indicator.startAnimating()
+self.startOperationsForPhotoRecord(photoDetails,indexPath:indexPath)
+</code></pre>
+
+<p>  }</p>
+
+<p>  return cell
+}
+```</p>
+
+<p>来看一下注释：</p>
+
+<ol>
+<li>为了提示用户，将cell的accessory view设置为<code>UIActivityIndicatorView</code>。</li>
+<li><code>photos</code>包含<code>PhotoRecord</code>实例。获取当前行所对应的图片记录。</li>
+<li>cell的文本（差不多）总是相同的，图片会在<code>PhotoRecord</code>中处理，所以可以在这里使用它们而不用关心图片的状态。</li>
+<li>检查图片。设置适当的activity indicator 和文本，然后开始执行任务（暂未实现）。</li>
+</ol>
+
+
+<p>可以移除<code>applySepiaFilter</code>，因为这里不需要再调用它了。添加下面的方法来开始任务：</p>
+
+<p>```
+func startOperationsForPhotoRecord(photoDetails: PhotoRecord, indexPath: NSIndexPath){
+  switch (photoDetails.state) {
+  case .New:</p>
+
+<pre><code>startDownloadForRecord(photoDetails, indexPath: indexPath)
+</code></pre>
+
+<p>  case .Downloaded:</p>
+
+<pre><code>startFiltrationForRecord(photoDetails, indexPath: indexPath)
+</code></pre>
+
+<p>  default:</p>
+
+<pre><code>NSLog("do nothing")
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>这里传入一个<code>PhotoRecord</code>实例和它的index path。根据图片状态，下载或添加滤镜。</p>
+
+<blockquote><p><strong>注意</strong>：下载和滤镜是分别实现的，因为有可能在图片下载时，用户将图片划动出屏幕了，这时不会再添加滤镜。当下一次用户划到当前行时，就不需要再下载图片了；只需要添加滤镜！高效的做法！:]</p></blockquote>
+
+<p>现在你需要实现上面所调用的方法。别忘了你有一个<code>PendingOperations</code>类来跟踪任务；现在可以使用它了！添加下面的代码：</p>
+
+<p>```
+func startDownloadForRecord(photoDetails: PhotoRecord, indexPath: NSIndexPath){
+  //1
+  if let downloadOperation = pendingOperations.downloadsInProgress[indexPath] {</p>
+
+<pre><code>return
+</code></pre>
+
+<p>  }</p>
+
+<p>  //2
+  let downloader = ImageDownloader(photoRecord: photoDetails)
+  //3
+  downloader.completionBlock = {</p>
+
+<pre><code>if downloader.cancelled {
+  return
+}
+dispatch_async(dispatch_get_main_queue(), {
+  self.pendingOperations.downloadsInProgress.removeValueForKey(indexPath)
+  self.tableView.reloadRowsAtIndexPaths([indexPath], withRowAnimation: .Fade)
+})
+</code></pre>
+
+<p>  }
+  //4
+  pendingOperations.downloadsInProgress[indexPath] = downloader
+  //5
+  pendingOperations.downloadQueue.addOperation(downloader)
+}</p>
+
+<p>func startFiltrationForRecord(photoDetails: PhotoRecord, indexPath: NSIndexPath){
+  if let filterOperation = pendingOperations.filtrationsInProgress[indexPath]{</p>
+
+<pre><code>return
+</code></pre>
+
+<p>  }</p>
+
+<p>  let filterer = ImageFiltration(photoRecord: photoDetails)
+  filterer.completionBlock = {</p>
+
+<pre><code>if filterer.cancelled {
+  return
+}
+dispatch_async(dispatch_get_main_queue(), {
+  self.pendingOperations.filtrationsInProgress.removeValueForKey(indexPath)
+  self.tableView.reloadRowsAtIndexPaths([indexPath], withRowAnimation: .Fade)
+  })
+</code></pre>
+
+<p>  }
+  pendingOperations.filtrationsInProgress[indexPath] = filterer
+  pendingOperations.filtrationQueue.addOperation(filterer)
+}
+```</p>
+
+<p>好！确保你明白上面代码的工作原理：</p>
+
+<ol>
+<li>首先，在<code>downloadInProgress</code>中检查对应<code>indexPath</code>的任务是否存在。如果存在，则不需要处理。</li>
+<li>如果不存在，通过指定构造器（designated initializer）创建<code>ImageDownloader</code>实例。</li>
+<li>加入完成闭包，它会在任务完成后执行。在这里通知你的程序一件任务已经完成最合适不过。需要注意的是，即使任务取消，闭包也会执行，因此在做任何工作前你必须检查任务是否被取消。你同样无法保证完成闭包在哪个线程中调用，所以需要用GCD在主线程中重新加载tableview。</li>
+<li>将任务加入<code>downloadsInProgress</code>来跟踪它。</li>
+<li>将任务加入下载队列。这里是任务实际执行的地方 —— 一旦你将任务加入队列，会由队列替你规划任务。</li>
+</ol>
+
+
+<p>给图片添加滤镜的方法遵循相同的模式，只不过它用<code>ImageFiltration</code>和<code>filtrationsInProgress</code>来跟踪任务。作为练习，你可以尝试去除重复代码 :]</p>
+
+<p>你做到了！你的项目完成了。运行应用来查看改进效果！当你滚动tableview时，应用不会再卡顿，当图片可见时才开始下载和加载滤镜。</p>
+
+<p><img src="http://cdn1.raywenderlich.com/wp-content/uploads/2014/07/iOS-Simulator-Screen-Shot-8-Jul-2014-20.57.53-333x500.png" alt="" /></p>
+
+<p>是不是很cool？你可以发现一点努力便能使你的程序大大改进 —— 并给用户带来更多乐趣！</p>
+
+<h2>调优</h2>
+
+<p>你已经学到很多了！你的小项目相比初始版本改进了许多。然而，仍然有一些细节需要关注。你想成为伟大的程序员，而不仅仅是好的程序员！</p>
+
+<p>你也许注意到当你滚动tableview时，那些划出屏幕的cell仍然在下载或加载滤镜。如果你快速滚动屏幕，程序会忙于下载图片和为图片加载滤镜，即使图片已经不可见。理想中，程序应该取消那些不可见图片的任务，而优先处理当前展示的cell。</p>
+
+<p>你之前已经加入了取消任务的代码 —— 现在应该使用它们了！:]</p>
+
+<p>打开 <strong>ListViewController.swift</strong>。找到<code>tableView(_:cellForRowAtIndexPath:)</code>，将<code>startOperationsForPhotoRecord</code>包进if语句：</p>
+
+<p><code>
+if (!tableView.dragging &amp;&amp; !tableView.decelerating) {
+  self.startOperationsForPhotoRecord(photoDetails, indexPath: indexPath)
+}
+</code></p>
+
+<p>你告诉tableview <em>只有停止滚动后</em> 才开始执行任务。这些实际上是<code>UIScrollView</code>的属性，因为<code>UITableView</code>是<code>UIScrollView</code>的子类，所以自动继承了这些属性。</p>
+
+<p>接下来，实现<code>UIScrollView</code>代理方法：</p>
+
+<p>```
+override func scrollViewWillBeginDragging(scrollView: UIScrollView) {
+  //1
+  suspendAllOperations()
+}</p>
+
+<p>override func scrollViewDidEndDragging(scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+  // 2
+  if !decelerate {</p>
+
+<pre><code>loadImagesForOnscreenCells()
+resumeAllOperations()
+</code></pre>
+
+<p>  }
+}</p>
+
+<p>override func scrollViewDidEndDecelerating(scrollView: UIScrollView) {
+  // 3
+  loadImagesForOnscreenCells()
+  resumeAllOperations()
+}
+```</p>
+
+<p>快速浏览以上代码：</p>
+
+<ol>
+<li>一旦用户开始滚动屏幕，你将挂起所有任务并留意用户想要看哪些行。稍后会实现<code>suspendAllOperations</code>。</li>
+<li>如果减速（decelerate）是<code>false</code>，表示用户停止拖拽tableview。此时你要继续执行之前挂起的任务，撤销不在屏幕中的cell的任务并开始在屏幕中的cell的任务。稍后实现<code>loadImagesForOnscreenCells</code>和<code>resumeAllOperations</code>。</li>
+<li>这个代理方法告诉你tableview停止滚动，执行#2中相同的操作。</li>
+</ol>
+
+
+<p>现在，在 <strong>ListViewController.swift</strong> 中实现方法：</p>
+
+<p>```
+func suspendAllOperations () {
+  pendingOperations.downloadQueue.suspended = true
+  pendingOperations.filtrationQueue.suspended = true
+}</p>
+
+<p>func resumeAllOperations () {
+  pendingOperations.downloadQueue.suspended = false
+  pendingOperations.filtrationQueue.suspended = false
+}</p>
+
+<p>func loadImagesForOnscreenCells () {
+  //1
+  if let pathsArray = tableView.indexPathsForVisibleRows() {</p>
+
+<pre><code>//2
+let allPendingOperations = NSMutableSet(array:pendingOperations.downloadsInProgress.keys.array)
+allPendingOperations.addObjectsFromArray(pendingOperations.filtrationsInProgress.keys.array)
+
+//3
+let toBeCancelled = allPendingOperations.mutableCopy() as NSMutableSet
+let visiblePaths = NSSet(array: pathsArray)
+toBeCancelled.minusSet(visiblePaths)
+
+//4
+let toBeStarted = visiblePaths.mutableCopy() as NSMutableSet
+toBeStarted.minusSet(allPendingOperations)
+
+// 5
+for indexPath in toBeCancelled {
+  let indexPath = indexPath as NSIndexPath
+  if let pendingDownload = pendingOperations.downloadsInProgress[indexPath] {
+    pendingDownload.cancel()
+  }
+  pendingOperations.downloadsInProgress.removeValueForKey(indexPath)
+  if let pendingFiltration = pendingOperations.filtrationsInProgress[indexPath] {
+    pendingFiltration.cancel()
+  }
+  pendingOperations.filtrationsInProgress.removeValueForKey(indexPath)
+}
+
+// 6
+for indexPath in toBeStarted {
+  let indexPath = indexPath as NSIndexPath
+  let recordToProcess = self.photos[indexPath.row]
+  startOperationsForPhotoRecord(recordToProcess, indexPath: indexPath)
+}
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p><code>suspendAllOperations</code>和<code>resumeAllOperations</code>实现都很简单。<code>NSOperationQueues</code>可以被挂起，只需将<code>suspended</code>属性设为<code>true</code>。这会挂起队列中所有任务 —— 你不能挂起某个单独的任务。</p>
+
+<p><code>loadImagesForOnscreenCells</code>有一点复杂。它的工作原理如下：</p>
+
+<ol>
+<li>开始将tableview可见行的index path放入数组中。</li>
+<li>通过组合所有下载队列和滤镜队列中的任务来创建一个包含所有等待任务的集合。</li>
+<li>构建一个需要撤销的任务的集合。从所有任务中除掉可见行的index path，剩下的就是屏幕外的行所代表的任务。</li>
+<li>创建一个需要执行的任务的集合。从所有可见index path的集合中除去那些已经在等待队列中的。</li>
+<li>遍历需要撤销的任务，撤消它们，然后从<code>PendingOperations</code>中去掉它们。</li>
+<li>遍历需要开始的任务，调用<code>startOperationsForPhotoRecord</code>。</li>
+</ol>
+
+
+<p>运行程序，你会得到一个响应性更佳，资源管理更好的程序。给自己一点掌声！</p>
+
+<p><img src="http://cdn1.raywenderlich.com/wp-content/uploads/2014/09/improved-700x350.png" alt="" /></p>
+
+<p>注意到当你停止滚动tableview时，可见行上的图片才开始处理。</p>
+
+<h2>下一步</h2>
+
+<p><a href="http://cdn1.raywenderlich.com/wp-content/uploads/2014/10/ClassicPhotos-Final_070114.zip">完成项目</a>。</p>
+
+<p>如果你完成了这个项目并且花时间理解了它，祝贺你！你可以认为你是一个更有价值的iOS开发者了！大多软件开发公司都会因为有一两个懂得这些的人而觉得幸运。</p>
+
+<p>但是当心 —— 就像深度嵌套（deeply-nested）的闭包，毫无节制的使用多线程会让你的项目难以理解和维护。线程会引入难以察觉的bug，直到你的网络很慢或代码运行在更快（或更慢）的设备上，或是运行在不同数量的核上，bug才会显现。仔细测试，并且总是使用Instruments（或你自己的观察）来验证引入线程确实做出了改进。</p>
+
+<p>这里还有一个没涉及到的特性 —— 依赖。你可以让一项任务依赖于另一项或多项任务。那么这项任务直到它所依赖的任务完成后才开始。例如：</p>
+
+<p>```
+// MyDownloadOperation is a subclass of NSOperation
+let downloadOperation = MyDownloadOperation()
+// MyFilterOperation  is a subclass of NSOperation
+let filterOperation = MyFilterOperation()</p>
+
+<p>filterOperation.addDependency(downloadOperation)
+```</p>
+
+<p>去除依赖：
+<code>
+filterOperation.removeDependency(downloadOperation)
+</code></p>
+
+<p>可以使用依赖简化这个项目的代码吗？自己尝试一下 :] 需要注意的是，如果一项任务所依赖的任务被 <em>撤销</em> 了，这项任务也会开始执行，就像它所依赖的任务完成了一样。你要牢记这一点。</p>
+
+<p>译者：<a href="http://loveltyoic.com">loveltyoic</a></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[在Swift中应用Grand Central Dispatch(下）]]></title>
+    <link href="http://loveltyoic.github.io/blog/2015/01/29/gcd-2-slash-2/"/>
+    <updated>2015-01-29T21:30:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2015/01/29/gcd-2-slash-2</id>
+    <content type="html"><![CDATA[<blockquote><p>本文译自<a href="http://www.raywenderlich.com/79150/grand-central-dispatch-tutorial-swift-part-2">Grand Central Dispatch Tutorial for Swift: Part 2/2</a></p></blockquote>
+
+<p>欢迎来到本GCD教程的第二同时也是最终部分！</p>
+
+<p>在第一部分中，你学到了并发，线程以及GCD的工作原理。通过使用<code>dispatch_barrrier</code>和<code>dispatch_sync</code>，你做到了让<code>PhotoManager</code>单例在读写照片时是线程安全的。除此之外，你用到<code>dispatch_after</code>来提示用户，优化了用户体验。还有，使用<code>dispatch_async</code>异步执行CPU密集型任务，从而为视图控制器初始化过程减负。</p>
+
+<!-- more -->
+
+
+<p>如果你跟着教程做，现在可以从第一部分的示例工程继续。如果你没有完成第一部分或不想再用你的工程，可以<a href="http://cdn4.raywenderlich.com/wp-content/uploads/2015/01/GooglyPuff_Swift_End_1_Xcode61_start.zip">下载第一部分的完成文件</a>。</p>
+
+<p>是时候进一步探索GCD了！</p>
+
+<h2>纠正过早出现的弹窗</h2>
+
+<p>你可能注意到，当你通过 <strong>Le Internet</strong> 选项添加照片时，会有提示框在图片下载完成之前就弹出，如下图：</p>
+
+<p><img src="http://cdn5.raywenderlich.com/wp-content/uploads/2014/01/Screen-Shot-2014-01-17-at-5.49.51-PM.png" alt="" /></p>
+
+<p>错误在于 <code>PhotoManager</code> 里的 <code>downloadPhotosWithCompletion</code>：
+```
+func downloadPhotosWithCompletion(completion: BatchPhotoDownloadingCompletionClosure?) {
+  var storedError: NSError!
+  for address in [OverlyAttachedGirlfriendURLString,</p>
+
+<pre><code>              SuccessKidURLString,
+              LotsOfFacesURLString] {
+let url = NSURL(string: address)
+let photo = DownloadPhoto(url: url!) {
+  image, error in
+  if error != nil {
+    storedError = error
+  }
+}
+PhotoManager.sharedManager.addPhoto(photo)
+</code></pre>
+
+<p>  }</p>
+
+<p>  if let completion = completion {</p>
+
+<pre><code>completion(error: storedError)
+</code></pre>
+
+<p>  }
+}
+<code>``
+这里在方法的最后调用</code>completion`闭包——你会想当然的认为所有图片都下载完了。但不幸的是，在此时无法保证。</p>
+
+<p><code>DownloadPhoto</code>类的实例方法从一个URL下载图片并且不等下载完成就立即退出。换言之，<code>downloadPhotosWithCompletion</code>在最后调用<code>completion</code>闭包，就好像其中的所有方法都在顺序执行，并且在每个方法完成后才执行下一个。</p>
+
+<p>然而，<code>DownloadPhoto(url:)</code>是异步并且立即返回的——所以目前的方式不能正常工作。</p>
+
+<p><code>downloadPhotosWithCompletion</code>应该在所有图片下载任务都完成后再调用自己的<code>completion</code>闭包。问题是：你怎么监视并发的异步事件呢？你不知道它们何时完成，以何种顺序。</p>
+
+<p>也许你可以用多个<code>Bool</code>值来追踪下载情况，但那不容易扩展。而且坦白讲，那是很丑陋的代码。</p>
+
+<p>幸运的是，<strong>dispatch groups</strong>就是专为监视多个异步任务的完成情况而设计的。</p>
+
+<h3>调度组（Dispatch Groups）</h3>
+
+<p>调度组在一组任务都完成后会发出通知。这些任务可以是异步或同步的，甚至可以分布在不同的队列。调度组还可以通过同步或异步的方式来通知。因为任务在不同的队列中，<code>disptch_group_t</code>实例用来追踪队列中的不同任务。</p>
+
+<p>在组内所有事件都完成时，GCD API提供了两种方式发送通知。</p>
+
+<p>第一种是<code>dispatch_group_wait</code>，它会阻塞当前进程，直到所有任务都完成或是等待超时。这正是我们的例子中需要的方式。</p>
+
+<p>打开 <strong>PhotoManager.swift</strong> ，替换<code>downloadPhotosWithCompletion</code>：
+```
+func downloadPhotosWithCompletion(completion: BatchPhotoDownloadingCompletionClosure?) {
+  dispatch_async(GlobalUserInitiatedQueue) { // 1</p>
+
+<pre><code>var storedError: NSError!
+var downloadGroup = dispatch_group_create() // 2
+
+for address in [OverlyAttachedGirlfriendURLString,
+                SuccessKidURLString,
+                LotsOfFacesURLString]
+{
+  let url = NSURL(string: address)
+  dispatch_group_enter(downloadGroup) // 3
+  let photo = DownloadPhoto(url: url!) {
+    image, error in
+    if let error = error {
+      storedError = error
+    }
+    dispatch_group_leave(downloadGroup) // 4
+  }
+  PhotoManager.sharedManager.addPhoto(photo)
+}
+
+dispatch_group_wait(downloadGroup, DISPATCH_TIME_FOREVER) // 5
+dispatch_async(GlobalMainQueue) { // 6
+  if let completion = completion { // 7
+    completion(error: storedError)
+  }
+}
+</code></pre>
+
+<p>  }
+}
+```
+逐一来看注释：</p>
+
+<ol>
+<li>因为使用<code>dispatch_group_wait</code>阻塞了当前进程，要用<code>dispatch_async</code>将整个方法放到后台队列，才能保证主线程不被阻塞。</li>
+<li>创建一个调度组，作用好比未完成任务的计数器。</li>
+<li><code>dispatch_group_enter</code>通知调度组一个任务已经开始。你必须保证<code>dispatch_group_enter</code>和<code>dispatch_group_leave</code>是成对调用的，否则程序会崩溃。</li>
+<li>通知任务已经完成。再一次，这里保持进和出相匹配。</li>
+<li><code>dispatch_group_wait</code>等待所有任务都完成直到超时。如果在任务完成前就超时了，函数会返回一个非零值。可以通过返回值来判断是否等待超时；不过，这里你用<code>DISPATCH_TIME_FOREVER</code>来表示一直等待。这意味着，它会永远等待！没关系，因为图片总是会下载完的。</li>
+<li>此时，你可以保证所有图片任务都完成或是超时了。接下来在主队列中加入完成闭包。闭包晚些时候会在主线程中执行。</li>
+<li>执行闭包。</li>
+</ol>
+
+
+<p>运行app，下载几张图片，留意你的app是如何表现的。</p>
+
+<blockquote><p><strong>Note</strong>：如果网速太快以至于分辨不出何时执行的闭包，你可以修改设备的设置。在 <strong>Setting</strong> 中的<strong>Developer Section</strong> 。打开 <strong>Network Link Conditioner</strong>，选择“Very Bad Network”。</p>
+
+<p>如果在模拟器上，用<a href="http://nshipster.com/network-link-conditioner/">工具</a>变更网速。这是你武器库中一个很好的工具，它让你清楚在不佳的网络下你的app会发生什么。</p></blockquote>
+
+<p>这个方案目前不错，但最好能避免阻塞进程。你下一步的工作是重写这个方法来异步通知下载完成。</p>
+
+<p>在学习下一个调度组的用法前，先看看怎样在不同的队列类型下使用调度组。</p>
+
+<ul>
+<li><strong>自定义串行队列</strong>：好选择。当一组任务完成时用它发送通知。</li>
+<li><strong>主队列（串行）</strong>：在当前情景下是不错的选择。但你要谨慎地在主队列中使用，因为同步等待所有任务会阻塞主线程。然而，当一个需要较长时间的任务（比如网络请求）完成时，异步更新UI是很好的选择。</li>
+<li><strong>并发队列</strong>：好选择。用于调度组和通知。</li>
+</ul>
+
+
+<h3>调度组，再来一次</h3>
+
+<p>做的不错，但是异步调度到另一个队列然后用 <strong>dispatch_group_wait</strong> 阻塞还是有一些笨拙。还有另一种方式&hellip;</p>
+
+<p>在 <strong>PhotoManager.swift</strong> 中找到<code>downloadPhotosWithCompletion</code>并替换之：
+```
+func downloadPhotosWithCompletion(completion: BatchPhotoDownloadingCompletionClosure?) {
+  // 1
+  var storedError: NSError!
+  var downloadGroup = dispatch_group_create()</p>
+
+<p>  for address in [OverlyAttachedGirlfriendURLString,</p>
+
+<pre><code>              SuccessKidURLString,
+              LotsOfFacesURLString]
+</code></pre>
+
+<p>  {</p>
+
+<pre><code>let url = NSURL(string: address)
+dispatch_group_enter(downloadGroup)
+let photo = DownloadPhoto(url: url!) {
+  image, error in
+  if let error = error {
+    storedError = error
+  }
+  dispatch_group_leave(downloadGroup)
+}
+PhotoManager.sharedManager.addPhoto(photo)
+</code></pre>
+
+<p>  }</p>
+
+<p>  dispatch_group_notify(downloadGroup, GlobalMainQueue) { // 2</p>
+
+<pre><code>if let completion = completion {
+  completion(error: storedError)
+}
+</code></pre>
+
+<p>  }
+}
+```
+异步方法是如何工作的：</p>
+
+<ol>
+<li>新的实现不需要把方法放进<code>dispatch_async</code>中，因为你并没有阻塞主线程。</li>
+<li><code>dispatch_group_notify</code>异步执行闭包。当调度组内没有剩余任务的时候闭包才执行。同样要指明在哪个队列中执行闭包。当下，你需要在主队列中执行闭包。</li>
+</ol>
+
+
+<p>这是更优雅的方法，并且不会阻塞任何进程。</p>
+
+<h2>并发过多带来的危险</h2>
+
+<p>通过支配这些新工具，你应该将每件事都线程化，对吗？</p>
+
+<p><img src="http://cdn5.raywenderlich.com/wp-content/uploads/2014/01/Thread_All_The_Code_Meme.jpg" alt="" /></p>
+
+<p>看看<code>PhotoManager</code>中的<code>downloadPhotosWithCompletion</code>。你会发现通过<code>for</code>循环下载了三张图片。现在来看看能否通过并发执行<code>for</code>循环来提速。</p>
+
+<p>是时候请出<code>dispatch_apply</code>了。</p>
+
+<p><code>dispatch_apply</code>像<code>for</code>循环一样，只不过它会并发地执行循环过程。这个函数是同步的，所以像普通的<code>for</code>循环一样，<code>dispatch_apply</code>在所有工作都完成后才返回。</p>
+
+<p>要注意循环的最佳次数，如果有太多循环但每个循环内只有很小的工作量，那么额外的开销会抹杀掉并发带来的好处。 <strong>步进</strong> (striding)可以帮助到你。它让你在每次循环中做多件工作。</p>
+
+<p>什么时候用<code>dispatch_apply</code>合适？</p>
+
+<ul>
+<li><strong>自定义串行队列</strong>：在串行队列中使用<code>dispatch_apply</code>完全无意义；它的效果和<code>for</code>循环一样。</li>
+<li><strong>主队列（串行）</strong>：理由同上，用<code>for</code>循环就可以了。</li>
+<li><strong>并发队列</strong>：明智之选，尤其是你需要追踪任务进度时。</li>
+</ul>
+
+
+<p>替换<code>downloadPhotosWithCompletion</code>如下：
+```
+func downloadPhotosWithCompletion(completion: BatchPhotoDownloadingCompletionClosure?) {
+  var storedError: NSError!
+  var downloadGroup = dispatch_group_create()
+  let addresses = [OverlyAttachedGirlfriendURLString,</p>
+
+<pre><code>               SuccessKidURLString,
+               LotsOfFacesURLString]
+</code></pre>
+
+<p>  dispatch_apply(UInt(addresses.count), GlobalUserInitiatedQueue) {</p>
+
+<pre><code>i in
+let index = Int(i)
+let address = addresses[index]
+let url = NSURL(string: address)
+dispatch_group_enter(downloadGroup)
+let photo = DownloadPhoto(url: url!) {
+  image, error in
+  if let error = error {
+    storedError = error
+  }
+  dispatch_group_leave(downloadGroup)
+}
+PhotoManager.sharedManager.addPhoto(photo)
+</code></pre>
+
+<p>  }</p>
+
+<p>  dispatch_group_notify(downloadGroup, GlobalMainQueue) {</p>
+
+<pre><code>if let completion = completion {
+  completion(error: storedError)
+}
+</code></pre>
+
+<p>  }
+}
+```
+现在你的循环可以并发执行了；调用 <strong>dispatch_apply</strong> 时，第一个参数是循环的次数，第二个参数是执行任务的队列，第三个参数是闭包。</p>
+
+<p>尽管你的代码在添加图片时是线程安全的，但是图片的顺序取决于线程完成的顺序。</p>
+
+<p>运行app，用 <strong>Le Internet</strong> 添加一些图片，发现不同了吗？</p>
+
+<p>在真机上运行新的代码会发现 <em>些许</em> 的速度提升。但是这值得吗？</p>
+
+<p>实际上，在这里并不值得这么做。原因如下：</p>
+
+<ul>
+<li>你很可能因为并行而花费了比<code>for</code>循环更多的开销。你应该结合合适的步长对 <em>非常大</em> 的集合使用<code>dispatch_apply</code>。</li>
+<li>开发app的时间有限——不要花时间过早优化。如果你想优化，那么就优化那些值得优化的东西。用Instruments测试app以找到最耗时间的方法。<a href="http://www.raywenderlich.com/?p=23037">如何使用Instruments</a>。</li>
+<li>一般说来，代码优化会让你的代码变得更复杂。你要确定带来的好处值得你增加复杂性。</li>
+</ul>
+
+
+<p>记住，不要痴迷于优化。否则只会让你自己为难，也让看你代码的人抓狂。</p>
+
+<h2>取消调度块</h2>
+
+<p>iOS 8 和 OS X Yosemite引入了 <strong>调度对象块</strong> （dispatch block object）。它们实现起来就像对闭包再包装一层。调度对象块可以做到很多事情，比如为队列中的对象设置QoS等级来决定优先级，但最显著的能力是可以取消块的执行。要明白对象块只有在轮到它执行之前才可以取消（一旦开始执行就不能取消了）。</p>
+
+<p>为了说明这个问题，首先用 <strong>Le Internet</strong> 下载一些图片，然后取消它们。替换 <strong>PhotoManager.swift</strong> 中的<code>downloadPhotosWithCompletion</code>：
+```
+func downloadPhotosWithCompletion(completion: BatchPhotoDownloadingCompletionClosure?) {
+  var storedError: NSError!
+  let downloadGroup = dispatch_group_create()
+  var addresses = [OverlyAttachedGirlfriendURLString,</p>
+
+<pre><code>               SuccessKidURLString,
+               LotsOfFacesURLString]
+</code></pre>
+
+<p>  addresses += addresses + addresses // 1
+  var blocks: [dispatch_block_t] = [] // 2</p>
+
+<p>  for i in 0 ..&lt; addresses.count {</p>
+
+<pre><code>dispatch_group_enter(downloadGroup)
+let block = dispatch_block_create(DISPATCH_BLOCK_INHERIT_QOS_CLASS) { // 3
+  let index = Int(i)
+  let address = addresses[index]
+  let url = NSURL(string: address)
+  let photo = DownloadPhoto(url: url!) {
+    image, error in
+    if let error = error {
+      storedError = error
+    }
+    dispatch_group_leave(downloadGroup)
+  }
+  PhotoManager.sharedManager.addPhoto(photo)
+}
+blocks.append(block)
+dispatch_async(GlobalMainQueue, block) // 4
+</code></pre>
+
+<p>  }</p>
+
+<p>  for block in blocks[3 ..&lt; blocks.count] { // 5</p>
+
+<pre><code>let cancel = arc4random_uniform(2) // 6
+if cancel == 1 {
+  dispatch_block_cancel(block) // 7
+  dispatch_group_leave(downloadGroup) // 8
+}
+</code></pre>
+
+<p>  }</p>
+
+<p>  dispatch_group_notify(downloadGroup, GlobalMainQueue) {</p>
+
+<pre><code>if let completion = completion {
+  completion(error: storedError)
+}
+</code></pre>
+
+<p>  }
+}
+<code>``
+1. 扩展</code>addresses<code>数组，将每个地址复制3份。
+2. 这个数组用来保存接下来创建的对象块。
+3.</code>dispatch_block_create<code>创建一个对象块。第一个参数是一个表明了块特征的标志。此处的标志让块从它进入的队列那里继承QoS等级。第二个参数是闭包形式的块定义。
+4. 块被异步的调度到全局主队列。这里用全局主队列是因为它是一个串行队列，可以方便我们取消对象块。当前代码已经在主线程中执行着，所以你可以保证下载任务将在此之后才执行（也就是这个</code>downloadPhotosWithCompletion<code>返回后才轮到下载任务执行）。
+5. 取数组中第三个到结尾的部分。
+6.</code>arc4random_uniform`会随机返回一个0到上界之间（不含上界）的整数。以2为上界会得到0或1，像投硬币一样。
+7. 如果随机数是1，则取消块。前提是，块还在队列中并且没开始。块在执行的过程中是不可以取消的。
+8. 因为所有块都加入调度组了，不要忘记移除被取消的那些块。</p>
+
+<p>运行，从 <strong>Le Internet</strong> 添加图片。你会看到app下载3张图片，以及随机数量的额外图片。那些没下载的图片是因为在加入队列 <em>后</em> 被取消了。这是一个刻意设计的例子，但是很好的演示了怎样使用调度对象块以及如何取消它。</p>
+
+<p>调度对象块能做更多事情，别忘了查看文档。</p>
+
+<h2>五花八门的GCD趣用</h2>
+
+<p>等等！还有更多！下面展示一些常规用途之外的功能。尽管你不会经常使用这些工具，但他们可能在特定情况下非常有用。</p>
+
+<h3>测试异步代码</h3>
+
+<p>这听起来很疯狂，但是你知道Xcode拥有测试功能吗？:]我知道，有时我喜欢假装它不存在，但是编写和运行测试对构建复杂的代码很重要。</p>
+
+<p>Xcode中的测试运行在<code>XCTestCase</code>的子类之下，它会运行所有以<code>test</code>开头的方法。测试跑在主线程下，所以你可以认为测试是顺序执行的。</p>
+
+<p>一旦给定的测试方法返回了，<strong>XCTest</strong> 会认为这个测试完成了而去做下一个测试。这就是说，在下一个测试执行过程中，前一个测试中的异步代码也在继续执行。</p>
+
+<p>网路请求通常是异步的，因为你不想阻塞主线程。一旦测试方法返回，测试也就结束了，因此很难对网络请求做测试。</p>
+
+<p>我们简单看一下两种普遍的测试异步代码的方法：<strong>信号量</strong>（semaphores）和 <strong>期望</strong>（expectations）。</p>
+
+<h3>信号量</h3>
+
+<p>信号量是一个古老学院派的线程概念，它是由谦逊的Edsger W. Dijkstra提出的。信号量是很复杂的话题，因为它建立在错综复杂的操作系统函数之上。</p>
+
+<p>如果你想了解更多信号量的知识，查阅<a href="http://greenteapress.com/semaphores/">细说信号量原理</a>。如果你是学院派，有一个用到了信号量的经典软件开发问题叫做<a href="http://en.wikipedia.org/wiki/Dining_philosophers_problem">哲学家进餐问题</a>。</p>
+
+<p>信号量让你控制多个消费者对有限资源的获取。例如，如果你创建一个信号量来控制拥有2个资源的资源池，那么同一时刻最多有两个线程可以进入临界区。其它也想使用资源的线程必须在FIFO队列中等待。</p>
+
+<p>打开 <strong>GooglyPuffTests.swift</strong> 并替换掉 <code>downloadImageURLWithString</code>：
+```
+func downloadImageURLWithString(urlString: String) {
+  let url = NSURL(string: urlString)
+  let semaphore = dispatch_semaphore_create(0) // 1
+  let photo = DownloadPhoto(url: url!) {</p>
+
+<pre><code>image, error in
+if let error = error {
+  XCTFail("\(urlString) failed. \(error.localizedDescription)")
+}
+dispatch_semaphore_signal(semaphore) // 2
+</code></pre>
+
+<p>  }</p>
+
+<p>  let timeout = dispatch_time(DISPATCH_TIME_NOW, DefaultTimeoutLengthInNanoSeconds)
+  if dispatch_semaphore_wait(semaphore, timeout) != 0 { // 3</p>
+
+<pre><code>XCTFail("\(urlString) timed out")
+</code></pre>
+
+<p>  }
+}
+```
+以上代码中信号量的工作原理：
+1. 创建信号量。参数表明信号量起始值。这个值代表了起始阶段可以获取信号量的线程数目（增加信号量就是发信号，用0做初始值代表当前没有线程可以获取信号量）。
+2. 在完成闭包中，你告诉信号量不再需要资源。这会使信号量增加，同时给其他等待资源的任务发信号，通知当前信号量可用。
+3. 等待信号量并设置超时时间。这个调用会阻塞当前进程直到收到信号。非0返回表示等待已超时。在这种情况下，测试失败，因为网络请求不应该超过10秒——相当合理的假设！
+（译者注：说下我的理解：首先创建了信号量，但此时因为信号量是0，没有线程可以获取它，注释3中对信号量的等待会阻塞。只有在图片下载好了以后，才会发送一个信号量，那么注释3对信号量的获取就成功了，并退出等待。但如果图片下载失败呢？就不会调用注释2这句触发信号的语句，那么注释3就会等待超时，从而测试失败。）</p>
+
+<p><strong>Product/Test</strong> 或 <strong>⌘+U</strong> 运行测试。测试应该成功。</p>
+
+<p>断掉网络连接并再次测试；如果在真机测试，请开启飞行模式。如果在模拟器上，直接断网就好了。测试在10秒后会返回失败的结果。很好，起作用了！</p>
+
+<p>这是相当微不足道的测试，但是如果你和服务端团队一起工作，这些基础测试可以避免一些涉及网络问题的无端指责。</p>
+
+<h3>期望（expectations）</h3>
+
+<p><code>XCTest</code>框架提供了另一种使用 <strong>期望</strong> 来测试异步代码的方法。这种特性让你首先设置你的期望——你希望发生的事——然后再开始异步任务。接下来测试会一直等待，直到异步任务将期望标记为 <em>已完成</em> 。</p>
+
+<p>替换 <strong>GooglyPuffTests.swift</strong> 中的<code>downloadImageURLWithString</code>：
+```
+func downloadImageURLWithString(urlString: String) {
+  let url = NSURL(string: urlString)
+  let downloadExpectation = expectationWithDescription(&ldquo;Image downloaded from (urlString)&rdquo;) // 1
+  let photo = DownloadPhoto(url: url!) {</p>
+
+<pre><code>image, error in
+if let error = error {
+  XCTFail("\(urlString) failed. \(error.localizedDescription)")
+}
+downloadExpectation.fulfill() // 2
+</code></pre>
+
+<p>  }</p>
+
+<p>  waitForExpectationsWithTimeout(10) { // 3</p>
+
+<pre><code>error in
+if let error = error {
+  XCTFail(error.localizedDescription)
+}
+</code></pre>
+
+<p>  }
+}
+<code>``
+工作原理：
+1. 用</code>expectationWithDescription<code>生成期望。测试会在日志上显示其中的字符串参数，所以请描述你期望发生的事。
+2. 在异步执行的闭包中调用</code>fulfill<code>来标记期望已达成。
+3. 调用线程用</code>waitForExpectationsWithTimeout`等待期望达成。如果等待超时会视为出错。</p>
+
+<p>运行测试。结果和使用信号量没什么不同，但使用<code>XCTest</code>框架是更清晰易读的方案。</p>
+
+<h3>调度源（Dispatch Sources）</h3>
+
+<p>GCD中存在一个特别有趣的特性叫调度源，它是一个包含底层功能的百宝囊，帮助你响应或监控Unix信号，文件描述符（file descriptors），Mach端口，VFS Nodes，以及其他复杂的东西。所有这些都超出了本教程的范围，但是你可以尝试着使用一下调度源对象。</p>
+
+<p>第一次使用调度源的用户可能会迷失其中，所以你首先要理解<code>dispatch_source_create</code>的工作原理。下面是创建它的函数原型：</p>
+
+<p><code>
+func dispatch_source_create(
+  type: dispatch_source_type_t,
+  handle: UInt,
+  mask: UInt,
+  queue: dispatch_queue_t!) -&gt; dispatch_source_t!
+</code></p>
+
+<p>第一个参数<code>type: dispatch_source_type_t</code>是最重要的参数，因为它描述了句柄（handle）和掩码（mask）参数。你需要查看<a href="https://developer.apple.com/library/mac/documentation/Performance/Reference/GCD_libdispatch_Ref/Reference/reference.html#//apple_ref/doc/constant_group/Dispatch_Source_Type_Constants">Xcode文档</a>来弄清楚<code>dispatch_source_type_t</code>的参数有哪些可选项。</p>
+
+<p>这里你会监视<code>DISPATCH_SOURCE_TYPE_SIGNAL</code>。如<a href="https://developer.apple.com/library/mac/documentation/Performance/Reference/GCD_libdispatch_Ref/Reference/reference.html#//apple_ref/c/macro/DISPATCH_SOURCE_TYPE_SIGNAL">文档</a>所述：</p>
+
+<p>调度源监控当前进程的信号。句柄（handle）是信号数字（int）。掩码（mask）没用到（传0）。</p>
+
+<p>Unix信号列表可以从<a href="http://www.opensource.apple.com/source/xnu/xnu-1456.1.26/bsd/sys/signal.h"><code>signal.h</code></a>找到。在顶部有一串<code>#define</code>。在这些信号列表中，你将要监控<code>SIGSTOP</code>信号。这个信号会在进程接收到不可抗拒的挂起指令时被发送。这个信号与你用LLDB debugger调试程序时发送的信号相同。</p>
+
+<p>进入 <strong>PhotoCollectionViewController.swift</strong> ，在<code>viewDidLoad</code>附近添加下面的代码。你需要为类添加两个私有属性，并在<code>viewDidLoad</code>的开始处添加段代码，在调用superclass和<code>ALAssetLibrary</code>之间：</p>
+
+<p>```</p>
+
+<h1>if DEBUG</h1>
+
+<p>private var signalSource: dispatch_source_t!
+private var signalOnceToken = dispatch_once_t()</p>
+
+<h1>endif</h1>
+
+<p>override func viewDidLoad() {
+  super.viewDidLoad()</p>
+
+<p>  #if DEBUG // 1
+  dispatch_once(&amp;signalOnceToken) { // 2</p>
+
+<pre><code>let queue = dispatch_get_main_queue()
+self.signalSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL,
+                                           UInt(SIGSTOP), 0, queue) // 3
+if let source = self.signalSource { // 4
+  dispatch_source_set_event_handler(source) { // 5
+    NSLog("Hi, I am: \(self.description)")
+  }
+  dispatch_resume(source) // 6
+}
+</code></pre>
+
+<p>  }
+  #endif</p>
+
+<p>  // The other stuff
+}
+```</p>
+
+<p>这段代码有点难懂，因此逐个注释来讲解：
+1. 最好只在DEBUG模式下编译这段代码，因为这可能让不怀好意者洞见很多信息。:] 在 <strong>Project Settings &ndash;> Build Settings &ndash;> Swift Compiler – Custom Flags &ndash;> Other Swift Flags &ndash;> Debug</strong> 下添加 <strong>-D DEBUG</strong> 。
+2. 用<code>dispatch_once</code>一次性初始化调度源。
+3. 初始化<code>signalSource</code>变量。你指明对信号感兴趣并且提供<code>SIGSTOP</code>做第二个参数。除此之外，你用主队列处理接收到的事件——稍后你会发现为什么。
+4. 如果参数错误，调度源对象不会被创建。因此，你应该在使用它之前确保调度源是有效的。
+5. <code>dispatch_source_set_event_handler</code>注册了一个事件处理闭包，当你接收到监控的信号时会调用这个闭包。
+6. 默认情况下，所有调度源在开始都处于挂起状态。当你想监视事件时，必须让源对象继续执行。</p>
+
+<p>运行app；暂停调试器然后立即恢复。检查控制台（console），你会看到类似下面的信息：</p>
+
+<p><code>
+2014-08-12 12:24:00.514 GooglyPuff[24985:5481978] Hi, I am: &lt;GooglyPuff.PhotoCollectionViewController: 0x7b765ee0&gt;
+</code></p>
+
+<p>你的app现在可以感知到调试（debugging-aware）了！这真棒，但在现实中怎样用它呢？</p>
+
+<p>你可以用它调试一个对象并在恢复app时展示数据；你也可以自定义一些安全逻辑来保护app，当恶意攻击者在你的程序上附着调试器的时候。</p>
+
+<p>有趣的想法是把这个方法当做堆栈追踪工具，来找到你想要在调试器中修改的对象。</p>
+
+<p><img src="http://cdn5.raywenderlich.com/wp-content/uploads/2014/01/What_Meme.jpg" alt="" /></p>
+
+<p>设想一下这样的场景。当你意外地停掉调试器时，你很难处在期望的栈帧上。而现在你可以在任意时刻停止调试器并让代码执行到你期望的位置。这很有用，当你想执行一段从调试器很难达到的代码。试一试！</p>
+
+<p>在<code>viewDidLoad</code>中的<code>NSLog</code>语句处设置断点。暂停调试器，然后再开始；app会命中你刚刚设置的断点。现在你已经深入到<code>PhotoCollectionViewController</code>方法中了。现在你可以随心所欲地使用<code>PhotoCollectionViewController</code>实例了。多么便捷！</p>
+
+<blockquote><p><strong>注意</strong>：如果在调试器中你不知道哪个线程是哪个，来看一下。主线程总是第一个，libdispatch，GCD的协调器是第二个。剩下的线程要看硬件当时在做什么样的工作。</p></blockquote>
+
+<p>在调试器中，输入：
+<code>
+po self.navigationItem.prompt = "WOOT!"
+</code>
+然后继续执行app。你会看到如下所示：</p>
+
+<p><img src="http://cdn5.raywenderlich.com/wp-content/uploads/2014/08/GooglyPuff_Swift_signal_break.png" alt="" /></p>
+
+<p><img src="http://cdn3.raywenderlich.com/wp-content/uploads/2014/08/GooglyPuff_Swift_woot-271x500.png" alt="" /></p>
+
+<p>通过这个方法，你可以更新UI，探查类的属性，甚至执行方法——无需重启app来进入特定的工作流状态。很巧妙。</p>
+
+<h2>下一步？</h2>
+
+<p>下载<a href="http://cdn2.raywenderlich.com/wp-content/uploads/2015/01/GooglyPuff_Swift_End_1_Xcode61_final.zip">最终的工程</a>。</p>
+
+<p>我不想重提，但是你真的应该看一下<a href="http://www.raywenderlich.com/?p=23037">怎样使用Instruments</a>。如果你想优化app，绝对需要这个。Instruments可以概述程序中哪些代码相对其它代码执行更久。如果你想知道代码实际的执行时间，很可能需要一些自制的解决方案。</p>
+
+<p>同时学习<a href="http://www.raywenderlich.com/?p=76341">如何在Swift中使用NSOperations和NSOperationQueue</a>，一种基于GCD的并发技术。实际上，这是使用GCD的最佳实践。NSOperations提供更好的控制，处理最多的并发操作，在牺牲一定速度的情况下更加面向对象。</p>
+
+<p>记住，除非你有特别的理由深入底层，你应该始终尝试并坚持使用更高层的API。只在你想学习更多或做一些非常非常“有趣”的事时才进入到Apple的“暗黑艺术”（dark art）中探险。:]</p>
+
+<p>祝你好运，尽情欢乐！</p>
+
+<p>译者：<a href="http://www.loveltyoic.com">loveltyoic</a></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[在Swift中应用Grand Central Dispatch(上）]]></title>
+    <link href="http://loveltyoic.github.io/blog/2015/01/28/gcd-1-slash-2/"/>
+    <updated>2015-01-28T14:02:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2015/01/28/gcd-1-slash-2</id>
+    <content type="html"><![CDATA[<blockquote><p>本文译自<a href="http://www.raywenderlich.com/79149/grand-central-dispatch-tutorial-swift-part-1">Grand Central Dispatch Tutorial for Swift: Part &frac12;</a></p></blockquote>
+
+<p>尽管 <strong>Grand Central Dispatch</strong> (GCD)已经存在一段时间了，但并非每个人都知道怎么使用它。这是情有可原的，因为并发很棘手，而且GCD本身基于C的API在Swift世界中很刺眼。
+在这两篇教程中，你会学到GCD的来龙去脉。第一部分解释了GCD可以做什么和几个基本功能。第二部分，你会学到一些GCD所提供的进阶功能。</p>
+
+<!-- more -->
+
+
+<h2>起步</h2>
+
+<p><em>libdispatch</em>是Apple所提供的在IOS和OS X上进行并发编程的库，而GCD正是它市场化的名字。GCD有如下优点：
+&ndash; GCD可以将计算复杂的任务放到后台执行，从而提升app的响应性能
+&ndash; GCD提供了比锁和线程更简单的并发模型，帮助开发者避免并发的bug。</p>
+
+<p>为了理解GCD，你需要了解一些线程和并发的概念。这些概念可能很含糊并且细微，所以先简要回顾一下。</p>
+
+<h3>串行 vs. 并发</h3>
+
+<p>这两个词用来描述任务的执行顺序。 <strong>串行</strong> 在同一时间点总是单独执行一个任务，而并发可以同时执行多个任务。</p>
+
+<h3>任务</h3>
+
+<p>在本教程中，你可以把任务当做一个闭包(closure)。实际上，你可以将GCD和函数指针一起使用，但是一般很少这样使用。闭包更简单！</p>
+
+<p>不记得Swift中的闭包？闭包是自含的，可保存传递并被调用的代码块。当调用的时候，他们的用法很像函数，可以有参数和返回值。除此之外，闭包可以“捕获”外部的变量，也就是说，它可以看到并记住它自身被定义时的作用域变量。</p>
+
+<p>Swift中的闭包和OC中的块(block)类似甚至于他们几乎就是可交换使用的。唯一的限制在于OC中不能使用Swift独有的特性，比如元组(tuple)。但OC中的块可以安全的替换成Swift中的闭包。</p>
+
+<h3>同步 vs. 异步</h3>
+
+<p>这两个词描述的是函数何时将控制权返回给调用者，以及在返回时任务的完成情况。</p>
+
+<p><em>同步</em>函数只有在任务完成后才会返回。</p>
+
+<p><em>异步</em>函数会立即返回，不会等待任务完成。因此异步函数不会阻塞当前线程。</p>
+
+<p> <strong>注意</strong>   &mdash; 当你读到同步函数阻塞(block)当前进程或者函数是阻塞(blocking)函数时，不要困惑！动词阻塞（block）描述的是函数对当前线程的影响，和块(block)没有关系。同时记住GCD文档中有关OC的block可以跟Swift的闭包互换。</p>
+
+<h3>临界区（Critical Section）</h3>
+
+<p>这是一段不能并发执行的代码，也就是说两个线程不可以同时执行它。这通常是因为这段代码会修改共享的资源。否则，并发的进程同时修改同一个变量会导致错误。</p>
+
+<h3>竞态条件</h3>
+
+<p>当两个线程竞争同一资源时，如果对资源的访问顺序敏感，就称存在竞态条件。竞态条件可能产生在代码检查时不易被发现的不可预期行为。</p>
+
+<h3>死锁</h3>
+
+<p>两个或更多的线程因等待彼此完成而陷入的困境称为死锁。第一个线程无法完成因为它在等待第二个线程完成。但是第二个线程也无法完成因为它在等待第一个线程完成。</p>
+
+<h3>线程安全</h3>
+
+<p>线程安全的代码是可以被多个线程或并发任务安全调用的，他不会造成任何问题（数据错误，崩溃等）。非线程安全的代码在同一时间只能单独执行。一段线程安全的代码如<code>let a = ["thread-safe"]</code>。由于数组是只读的，它可以被多个线程同时使用而不会引发问题。另一方面，<code>var a = ["thread-unsafe"]</code>是可变数组。这意味着它不是线程安全的，因为多个线程可以同时获取并修改这个数组，会得到不可预料的结果。非线程安全的变量和可变的数据结构在同一时刻应该只能被一个线程获取。</p>
+
+<h3>上下文切换</h3>
+
+<p>上下文切换是在进程中切换不同线程时保存和恢复程序执行状态的过程。这一过程在编写多任务app时相当常见，但是会造成一些额外开支。</p>
+
+<h3>并发 vs 并行</h3>
+
+<p>并发和并行经常会被同时提起，所以值得通过简短的解释来区分彼此。</p>
+
+<p>并发代码中的单独部分可以同时执行。然而，这要由系统来决定并发怎样发生或是否发生。</p>
+
+<p>多核设备通过并行来同时执行多个线程；然而，在单核设备中，必须要通过上下文切换来运行另一个线程或进程。这一过程通常发生的很快以至于给人并行的假象。如下图所示
+<img src="http://cdn1.raywenderlich.com/wp-content/uploads/2014/01/Concurrency_vs_Parallelism.png" alt="" /></p>
+
+<p>尽管你可能在GCD之下编写并发执行的代码，但仍由GCD来决定并行的需求有多大。</p>
+
+<p>深层次的观点是并发实际上是关乎<em>结构</em>的。当你编写GCD代码时，你组织你的代码来揭示出可以同时运行的工作，以及不可以同时运行的。如果你想深入了解这个主题，猛击<a href="http://vimeo.com/49718712">Rob Pike</a>。</p>
+
+<h2>队列</h2>
+
+<p>GCD提供了 <strong>调度队列</strong> （dispatch queues）来处理提交的任务；这些队列管理着你向GCD提交的任务并且以先进先出（FIFO）的顺序来执行任务。这保证了第一个加入队列的任务第一个被执行，第二个加入的任务第二个开始执行，以此类推。</p>
+
+<p>所有调度队列都是线程安全的从而让你可以同时在多个线程中使用它们。当你明白了调度队列如何为你的代码提供了线程安全性时，GCD的优点就很明显了。关键是选择正确的调度队列种类和正确的 <strong>调度函数</strong> （dispatching function）来提交你的任务。</p>
+
+<h3>串行队列</h3>
+
+<p>串行队列中的任务同一时间只执行一件任务，每件任务只有在先前的任务完成后才开始。同时，你并不知道一个任务完成到另一个任务开始之间的间隔时间，如下图所示：
+<img src="http://cdn2.raywenderlich.com/wp-content/uploads/2014/09/Serial-Queue-Swift.png" alt="" /></p>
+
+<p>任务的执行是在GCD掌控之下的；你唯一确定的就是GCD在同一时刻只执行一件任务并且按任务加入队列的顺序执行。</p>
+
+<p>因为不会在串行队列中同时执行两件任务，所以没有多个任务同时进入临界区的危险；这保证了临界区不会出现竞态条件。因此如果进入临界区的唯一途径就是通过向调度队列提交任务，那么可以保证临界区是安全的。</p>
+
+<h3>并发队列</h3>
+
+<p>并发队列中的任务可以保证按进入队列的顺序被执行&hellip;仅此而已！任务可能以任意顺序完成而且你不知道何时下一个任务会开始，或是任一时刻有多少任务在运行。再一次，这完全取决于GCD。
+下图展示了四个并发任务的例子:
+<img src="http://cdn2.raywenderlich.com/wp-content/uploads/2014/09/Concurrent-Queue-Swift.png" alt="" /></p>
+
+<p>任务1，2和3都运行的很快，一个接一个。但是任务1在任务0开始了一段时间后才开始。同时，任务3在任务2开始后才开始但是却更早完成。</p>
+
+<p>何时开始一个任务完全取决于GCD。如果一个任务的执行时间和另一个的发生重叠，将由GCD来决定是否要将任务运行在另一个可用的核上或是通过上下文切换来运行另一个程序。</p>
+
+<p>有趣的是，GCD为每种队列类型提供了至少<em>5</em>种特别的队列。</p>
+
+<h3>队列类型</h3>
+
+<p>首先，系统提供了一种特殊的串行队列 <strong>main queue</strong>。和其他的串行队列一样，在这个队列里的任务同一时刻只有一个在执行。然而，这个队列保证了所有任务会在主线程中执行，主线程是唯一一个允许更新UI的线程。这个队列用来向 <strong>UIView</strong>  对象发消息或发通知。</p>
+
+<p>系统同时提供了几种并发队列。这些队列和它们自身的QoS等级相关。QoS等级表示了提交任务的意图，使得GCD可以决定如何制定优先级。</p>
+
+<ul>
+<li>QOS_CLASS_USER_INTERACTIVE：  <strong>user interactive</strong> 等级表示任务需要被立即执行以提供好的用户体验。使用它来更新UI，响应事件以及需要低延时的小工作量任务。这个等级的工作总量应该保持较小规模。</li>
+<li>QOS_CLASS_USER_INITIATED： <strong>user initiated</strong> 等级表示任务由UI发起并且可以异步执行。它应该用在用户需要即时的结果同时又要求可以继续交互的任务。</li>
+<li>QOS_CLASS_UTILITY： <strong>utility</strong>  等级表示需要长时间运行的任务，常常伴随有用户可见的进度指示器。使用它来做计算，I/O，网络，持续的数据填充等任务。这个等级被设计成节能的。</li>
+<li>QOS_CLASS_BACKGROUND： <strong>background</strong> 等级表示那些用户不会察觉的任务。使用它来执行预加载，维护或是其它不需用户交互和对时间不敏感的任务。</li>
+</ul>
+
+
+<p>要清楚Apple的API同时也使用了全局调度队列（global dispatch queue），所以你添加的任何任务都不是这些队列中的唯一任务。</p>
+
+<p>最后，你可以创建自定义的串行或并发队列。意味着你至少有<em>5</em>种队列：主队列（main queue），四种通用调度队列，加上任意你自己定制的队列！</p>
+
+<p>以上就是调度队列的主要部分！</p>
+
+<p>GCD的“艺术”可归结为选择正确的队列调度函数来提交任务。最佳的学习方式就是通过下面的例子。</p>
+
+<h2>示例</h2>
+
+<p>因为这篇教程的目标是使用GCD优化程序以及在不同线程中安全的运行代码，所以你会以一个几近完成的项目GooglyPuff来开始。</p>
+
+<p>GooglyPuff是一个未优化，非线程安全的app，使用Core Image的人脸识别API在人脸上叠加金鱼眼。初始图像可以从图片库中选择或是从网络下载一组预定的图片。</p>
+
+<p><a href="http://cdn5.raywenderlich.com/wp-content/uploads/2015/01/GooglyPuff_Swift_Start_1_Xcode61.zip">GooglyPuff_Swift_Start_1</a></p>
+
+<p>一旦下载了工程，提取到合适的地方，打开Xcode并运行它。看起来如下：
+<img src="http://cdn3.raywenderlich.com/wp-content/uploads/2014/01/Workflow1.png" alt="" /></p>
+
+<p>注意到当你选择 <strong>Le Internet</strong> 选项来下载图片时，一个<code>UIAlertController</code>提示框会过早的弹出。你会在教程的第二部分修复这个问题。</p>
+
+<p>这个工程中有4个需要关心的类：
+&ndash; <code>PhotoCollectionViewController</code>：app启动后的第一个视图控制器。展示所有选择的图片的缩略图。
+&ndash; <code>PhotoDetailViewController</code>：为图片加上金鱼眼并在<code>UIScrollView</code>中展示。
+&ndash; <code>Photo</code>：描述图片属性的协议。提供图片，缩略图和状态。两个类实现了这个协议：<code>DownloadPhoto</code>从<code>NSURL</code>实例化图片，<code>AssetPhoto</code>从<code>ALAsset</code>实例化图片。
+&ndash; <code>PhotoManager</code>：管理所有<code>Photo</code>对象。</p>
+
+<h2>使用<code>dispatch_sync</code>处理后台任务</h2>
+
+<p>返回app并从图片库中添加一些图片或使用 <strong>Le Internet</strong> 选项下载一些。</p>
+
+<p>留意在轻触<code>PhotoCollectionViewController</code>中的<code>UICollectionViewCell</code>后要多久才能完成<code>PhotoDetailViewController</code>的初始化；此时存在明显的延迟，尤其是在较慢的设备上浏览较大的图片时。</p>
+
+<p>一不小心就会在<code>UIViewController</code>的<code>viewDidLoad</code>中填充过多杂乱的方法而造成超负荷；以至于经常要等待很久视图控制器才会出现。如果可能的话，最好将一些工作转移到后台去完成，如果这些工作在加载时不是必需的。</p>
+
+<p>听起来是使用<code>dispatch_async</code>的时候！</p>
+
+<p>打开<code>PhotoDetailViewController</code>然后用下面的实现替换<code>viewDidload</code>：
+```
+override func viewDidLoad() {
+  super.viewDidLoad()
+  assert(image != nil, &ldquo;Image not set; required to use view controller&rdquo;)
+  photoImageView.image = image</p>
+
+<p>  // Resize if neccessary to ensure it&rsquo;s not pixelated
+  if image.size.height &lt;= photoImageView.bounds.size.height &amp;&amp;</p>
+
+<pre><code> image.size.width &lt;= photoImageView.bounds.size.width {
+photoImageView.contentMode = .Center
+</code></pre>
+
+<p>  }</p>
+
+<p>  dispatch_async(dispatch_get_global_queue(Int(QOS_CLASS_USER_INITIATED.value), 0)) { // 1</p>
+
+<pre><code>let overlayImage = self.faceOverlayImageFromImage(self.image)
+dispatch_async(dispatch_get_main_queue()) { // 2
+  self.fadeInNewImage(overlayImage) // 3
+}
+</code></pre>
+
+<p>  }
+}
+<code>``
+上面代码的工作流程：
+1. 首先将工作从主线程上转移到全局队列中。因为这是一个</code>dispatch_async<code>调用，异步提交的闭包意味着调用线程会继续执行下去。这使得</code>viewDidLoad<code>在主线程上更早的完成从而让加载的过程在感觉上更迅速。同时，人脸识别过程已经开始并会在晚些时候完成。
+2. 在这时，人脸识别已经完成并生成一张新图片。因为要用这张新图片更新</code>UIImageView<code>，所以把一个闭包加入主线程中。记住 -- 必须总是在主线程中操作</code>UIKit<code>！
+3. 最后，用</code>fadeInNewImage`更新UI。</p>
+
+<p>注意到你在使用Swift的尾随闭包（trailing closure）语法，将闭包写在参数括号的后面传给<code>dispatch_async</code>。这种语法看起来更清晰，因为闭包没有内嵌到函数括号中。</p>
+
+<p>运行app；选择一张图片然后你会明显地发现视图控制器载入更快了，随后金鱼眼会加入进来。这给app带来了很好的效果，因为你展示出图片修改前后的变化。同时，如果你试图加载一张极其巨大的图片，app不会因为加载视图控制器而失去响应，这让app有很好的适应性。</p>
+
+<p>正如前面所提到的，<code>dispatch_async</code>以闭包的形式向队列中追加了一项任务并立即返回了。这项任务会在GCD决定的稍后时间执行。当你需要执行网络请求或在后台执行繁重的CPU任务时，使用<code>dispatch_async</code>不会阻塞当前进程。</p>
+
+<p>何时使用何种队列类型快速指南：
+&ndash; 自定义串行队列：当你想顺序执行后台任务并追踪它时，这是一个很好的选择。因为同时只有一个任务在执行，因此消除了资源竞争。注意如果需要从方法中获取数据，你必须内置另一个闭包来得到它或者考虑使用<code>dispatch_sync</code>。
+&ndash; 主队列（串行）：当并发队列中的任务完成需要更新UI的时候，这是一个通常的选择。为达此目的，需要在一个闭包中嵌入另一个闭包。同时，如果在主队列中调用<code>dispatch_async</code>来返回主队列，能保证新的任务会在当前方法完成后再执行。
+&ndash; 并发队列：通常用来执行与UI无关的后台任务。</p>
+
+<h2>获取全局队列的帮助变量（Helper Variable）</h2>
+
+<p>你可能注意到<code>dispatch_get_global_queue</code>的QoS等级参数写起来有些繁琐。这是由于<code>qos_class_t</code>被定义为一个结构体，它包含有<code>Uint32</code>型的属性<code>value</code>，而这个属性需要被转型为<code>Int</code>。在 <strong>Utils.swift</strong> 中添加一些全局的计算变量，使获取全局队列更方便一些：
+```
+var GlobalMainQueue: dispatch_queue_t {
+  return dispatch_get_main_queue()
+}</p>
+
+<p>var GlobalUserInteractiveQueue: dispatch_queue_t {
+  return dispatch_get_global_queue(Int(QOS_CLASS_USER_INTERACTIVE.value), 0)
+}</p>
+
+<p>var GlobalUserInitiatedQueue: dispatch_queue_t {
+  return dispatch_get_global_queue(Int(QOS_CLASS_USER_INITIATED.value), 0)
+}</p>
+
+<p>var GlobalUtilityQueue: dispatch_queue_t {
+  return dispatch_get_global_queue(Int(QOS_CLASS_UTILITY.value), 0)
+}</p>
+
+<p>var GlobalBackgroundQueue: dispatch_queue_t {
+  return dispatch_get_global_queue(Int(QOS_CLASS_BACKGROUND.value), 0)
+}
+<code>
+回到  **PhotoDetailViewController**  中的`viewDidLoad`中，将`dispatch_get_global_queue`和`dispatch_get_main_queue`替换为帮助变量：
+</code>
+dispatch_async(GlobalUserInitiatedQueue) {
+  let overlayImage = self.faceOverlayImageFromImage(self.image)
+  dispatch_async(GlobalMainQueue) {</p>
+
+<pre><code>self.fadeInNewImage(overlayImage)
+</code></pre>
+
+<p>  }
+}
+```
+这使得调度调用更易读并且很容易看出在使用哪个队列。</p>
+
+<h2>用<code>dispatch_after</code>推迟任务</h2>
+
+<p>仔细思考你的app中的UX。用户可能在第一次打开app的时候不知道该做什么，不是吗？</p>
+
+<p>如果在  <strong>PhotoManager</strong>  类中没有图片的时候，给用户一个提示是个不错的主意。然而，你同时要考虑用户的视线怎样扫过屏幕：如果提示出现的太快，用户可能还在看其他的地方而忽略了提示。</p>
+
+<p>推迟一秒钟再出现提示，此时便可抓住用户的注意力，因为他们已经对app有了第一印象。</p>
+
+<p>将下面的代码加到<code>showOrHideNavPrompt</code>的实现中，它位于 <strong>PhotoCollectionViewController.swift</strong> 文件底部。
+```
+func showOrHideNavPrompt() {
+  let delayInSeconds = 1.0
+  let popTime = dispatch_time(DISPATCH_TIME_NOW,</p>
+
+<pre><code>                          Int64(delayInSeconds * Double(NSEC_PER_SEC))) // 1
+</code></pre>
+
+<p>  dispatch_after(popTime, GlobalMainQueue) { // 2</p>
+
+<pre><code>let count = PhotoManager.sharedManager.photos.count
+if count &gt; 0 {
+  self.navigationItem.prompt = nil
+} else {
+  self.navigationItem.prompt = "Add photos with faces to Googlyify them!"
+}
+</code></pre>
+
+<p>  }
+}
+<code>``
+</code>showOrHideNavPrompt<code>会在</code>viewDidLoad<code>以及</code>UICollectionView<code>重新加载的时候被执行。代码解释如下：
+1. 声明推迟的时间。
+2. 等待</code>delayInSeconds`所表示的时间，然后将闭包异步地加入主队列中。</p>
+
+<p>运行app。在短暂的延迟后，提示会出现并吸引用户的注意。</p>
+
+<p><code>dispatch_after</code>的工作原理就像推迟的<code>dispatch_async</code>。一旦<code>dispatch_after</code>返回，你还是无法掌握实际的执行时间抑或是取消任务。</p>
+
+<p>想知道何时使用<code>dispatch_after</code>？</p>
+
+<ul>
+<li>自定义串行队列：慎用。在自定义串行队列中慎用<code>dispatch_after</code>。你最好留在主队列中。</li>
+<li>主队列（串行）：好主意。在主队列中使用<code>dispatch_after</code>是一个好主意；Xcode对此有自动补全模板。</li>
+<li>并发队列：慎用。很少会这样使用，最好留在主队列中。</li>
+</ul>
+
+
+<h2>单例和线程安全</h2>
+
+<p>单例。爱也好，恨也罢，它们在iOS中就像猫之于互联网一样流行。:]</p>
+
+<p>经常有人因为单例不是线程安全的而忧虑。这种担忧是很有道理的，考虑到他们的用法：单例经常被多个控制器同时使用。  <strong>PhotoManager</strong>  类是一个单例，所以你要仔细思考这个问题。</p>
+
+<p>思考两种情形，初始化单例的过程和对他进行读写的过程。</p>
+
+<p>先来看初始化。这看起来很简单，因为Swift在全局域中初始化变量。在Swift中，全局变量在首次使用时被初始化，并且保证初始化是原子操作。也就是说，初始化代码被视为临界区从而保证了初始化在其他线程使用全局变量之前就完成了。Swift是怎么做到的？其实，Swift在幕后使用了GCD中的<code>dispatch_once</code>，详见<a href="https://developer.apple.com/swift/blog/?id=7">博客</a>。</p>
+
+<p><code>dispatch_once</code>以线程安全的方式执行且仅执行一次闭包。如果一个线程正处于临界区中 &mdash; 被提交给<code>dispatch_once</code>的任务 &mdash; 其他线程会阻塞直到它完成。并且一旦它完成，其他线程不会再执行临界区中的代码。用<code>let</code>将单例定义为全局常量，我们可以进一步保证变量在初始化后不会发生变化。从某种意义上说，所有Swift全局常亮量都天生是单例，并且线程安全地初始化。</p>
+
+<p>但是我们仍需要考虑读和写。尽管Swift使用<code>dispatch_once</code>来确保单例初始化是线程安全的，但不能保证它所表示的数据类型也是线程安全的。例如用一个全局变量来声明一个类实例，但在类中还是会有修改类内部数据的临界区。此时就需要其他方式来达成线程安全，比如通过对数据的同步化使用(synchronizing access)。</p>
+
+<h2>处理读写问题</h2>
+
+<p>实例化线程安全性不是单例的唯一问题。如果单例的属性表示一个可变对象，比如<code>PhotoManager</code>中的<code>photos</code>，那么你就需要考虑那个对象是否线程安全。</p>
+
+<p>在Swift中任意用<code>let</code>声明的常量都是只读并且线程安全的。用<code>var</code>声明的变量是可变且非线程安全的，除非数据类型本身被设计成线程安全。Swift中的集合类型比如<code>Array</code>和<code>Dictionary</code>，当声明为变量时不是线程安全的。那么像Foundation的容器<code>NSArray</code>呢？是线程安全的吗？答案是&mdash;“可能不是”！Apple维护的一个<a href="https://developer.apple.com/library/mac/documentation/cocoa/conceptual/multithreading/ThreadSafetySummary/ThreadSafetySummary.html">帮助列表</a>中有许多Foundation中非线程安全的类。</p>
+
+<p>尽管很多线程可以同时读取一个<code>Array</code>的可变实例而不出问题，但如果一个线程在修改数组的同时另一个线程却在读取这个数组，这是不安全的。你的单例目前还不能阻止这种情况发生。</p>
+
+<p>为了弄清楚问题，看看  <strong>PhotoManager.swift</strong>  中的<code>addPhoto</code>：
+```
+func addPhoto(photo: Photo) {
+  _photos.append(photo)
+  dispatch_async(dispatch_get_main_queue()) {</p>
+
+<pre><code>self.postContentAddedNotification()
+</code></pre>
+
+<p>  }
+}
+```
+这是一个 <strong>写</strong> 方法，因为它修改了一个可变数组。</p>
+
+<p>再看看<code>photos</code>属性：
+<code>
+private var _photos: [Photo] = []
+var photos: [Photo] {
+  return _photos
+}
+</code>
+这个属性的getter方法是一个  <strong>读</strong>  方法。调用者得到一个数组的拷贝并且保护了原始数组不被改变，但是这不能保证一个线程在调用<code>addPhoto</code>来写的时候没有另一个线程同时也在调用getter方法读<code>photos</code>属性。</p>
+
+<blockquote><p> <strong>注意</strong> ：在上面的代码中，为什么调用者要获取<code>photo</code>数组的拷贝？在Swift中，参数或函数返回是通过值或引用来传递的。引用传递和OC中的传指针一样，这意味着你得到的是原始的对象，对这个对象的修改会影响到其他使用了这个对象引用的代码。值传递拷贝了对象本身，对拷贝的修改不会影响原始的对象。默认情况下，Swift类实例是引用传递而结构体是值传递。</p>
+
+<p>Swift内置的数据类型，如<code>Array</code>和<code>Dictionary</code>，是用结构体来实现的，看起来传递集合类型会造成代码中出现大量的拷贝。不要因此担心内存使用问题。Swift的集合类型经过优化，只有在需要的时候才进行拷贝，比如通过值传递的数组在第一次被修改的时候。</p></blockquote>
+
+<p>这是软件开发中经典的<a href="http://en.wikipedia.org/wiki/Readers%E2%80%93writers_problem">读者写者问题</a>（Readers-Writers Problem）。GCD使用 <strong>调度屏障</strong> （dispatch barriers）提供了一个优雅的解决方案来生成<a href="http://en.wikipedia.org/wiki/Read/write_lock_pattern">读写锁</a>。</p>
+
+<p>当跟并发队列一起工作时，调度屏障是一族行为像序列化瓶颈的函数。使用GCD的barrier API确保了提交的闭包是指定队列中在特定时段唯一在执行的一个。也就是说必须在所有先于调度屏障提交的任务已经完成的情况下，闭包才能开始执行。</p>
+
+<p>当轮到闭包时，屏障执行这个闭包并确保队列在此过程不会执行其他任务。一旦闭包完成，队列返回到默认的执行方式。GCD同时提供了同步和异步两种屏障函数。</p>
+
+<p>下图说明了屏障函数应用于多个异步任务的效果：</p>
+
+<p><img src="http://cdn4.raywenderlich.com/wp-content/uploads/2014/09/Dispatch-Barrier-Swift.png" alt="" /></p>
+
+<p>注意队列开始就像普通的并发队列一样工作。但当屏障执行的时候，队列变成像串行队列一样。就是说，屏障是唯一一个在执行的任务。在屏障完成后，队列恢复成普通的并发队列。</p>
+
+<p>下面说明什么时候用 &mdash; 什么时候不应该用 &mdash; 屏障函数：</p>
+
+<ul>
+<li>自定义串行队列：坏选择。因为串行队列本身就是顺序执行，屏障不会起到任何帮助作用。</li>
+<li>全局并发队列：慎用。其他系统可能也在使用队列，你不应该出于自身目的而独占队列。</li>
+<li>自定义并发队列：最佳选择。用于原子操作或是临界区代码。任何需要线程安全的设置和初始化都可以使用屏障。</li>
+</ul>
+
+
+<p>因为以上唯一合适的选择就是自定义并发队列，你需要生成一个这样的队列来处理屏障函数以隔离读写操作。并发队列允许多个线程同时的读操作。</p>
+
+<p>打开 <strong>PhotoManager.swift</strong> 并在<code>photos</code>属性下面添加如下私有属性到类中：
+```
+private let concurrentPhotoQueue = dispatch_queue_create(</p>
+
+<pre><code>"com.raywenderlich.GooglyPuff.photoQueue", DISPATCH_QUEUE_CONCURRENT)
+</code></pre>
+
+<p>```</p>
+
+<p>使用<code>dispatch_queue_create</code>初始化一个并发队列<code>concurrentPhotoQueue</code>。第一个参数遵循反向DNS命名习惯；保证描述性以利于调试。第二个参数指出你的队列是串行的还是并发的。</p>
+
+<blockquote><p> <strong>注意</strong> ：当在网上搜索例子时，你经常看到人们传<code>0</code>或<code>NULL</code>作为<code>dispatch_queue_create</code>的第二个参数。这是以一种过时的方法来生成串行调度队列；最好用参数显示声明。</p></blockquote>
+
+<p>找到<code>addPhoto</code>并用如下实现替换之：
+```
+func addPhoto(photo: Photo) {
+  dispatch_barrier_async(concurrentPhotoQueue) { // 1</p>
+
+<pre><code>self._photos.append(photo) // 2
+dispatch_async(GlobalMainQueue) { // 3
+  self.postContentAddedNotification()
+}
+</code></pre>
+
+<p>  }
+}
+<code>``
+来看这段代码如何工作的：
+1. 将写操作加入自定义的队列中。当临界区被执行时，这是队列中唯一一个在执行的任务。
+2. 将对象加入数组。因为是屏障闭包，这个闭包不会和</code>concurrentPhotoQueue`中的其他任务同时执行。
+3. 最终发送一个添加了图片的通知。这个通知应该在主线程中发送因为这涉及到UI，所以这里分派另一个异步任务到主队列中。</p>
+
+<p>这个任务解决了写问题，但是你还需要实现<code>photos</code>的读方法。</p>
+
+<p>为确保和写操作保持线程安全，你需要在<code>concurrentPhotoQueue</code>中执行读操作。但是你需要从函数返回读数据，所以不能异步地提交读操作到队列里，因为异步任务不能保证在函数返回前执行。</p>
+
+<p>因此，<code>dispatch_sync</code>是个极好的候选。</p>
+
+<p><code>dispatch_sync</code>同步提交任务并等到任务完成后才返回。使用<code>dispatch_sync</code>和调度屏障一起来跟踪任务；或是在需要等待返回数据时使用<code>dispatch_sync</code>。</p>
+
+<p>仍需小心。设想你调用<code>dispatch_sync</code>到当前队列中。这会造成死锁。因为调用在等待闭包完成，但是闭包无法完成（甚至根本没开始！），直到当前在执行的任务结束，但当前任务没法结束（因为阻塞的闭包还没完成）！这就要求你必须清醒的认识到你从哪个队列调用了闭包，以及你将任务提交到哪个队列。</p>
+
+<p>概述一下何时何地使用<code>dispatch_sync</code>：
+&ndash; 自定义串行队列：非常小心；如果你在运行一个队列时调用<code>dispatch_sync</code>调度任务到同一个队列，你显然会制造死锁。
+&ndash; 主队列（串行）：非常小心，原理同上。
+&ndash; 并发队列：好选择。用在和调度屏障同步或是等待任务完成以继续后续处理。
+还是在 <strong>PhotoManager.swift</strong> 中，替换<code>photos</code>如下：
+```
+var photos: [Photo] {
+  var photosCopy: [Photo]!
+  dispatch_sync(concurrentPhotoQueue) { // 1</p>
+
+<pre><code>photosCopy = self._photos // 2
+</code></pre>
+
+<p>  }
+  return photosCopy
+}
+<code>``
+分别来看每个号码注释：
+1. 同步调度到</code>concurrentPhotoQueue<code>队列执行读操作。
+2. 保存图片数组的拷贝到</code>photoCopy`并返回它。</p>
+
+<p>恭喜 —— 你的<code>PhotoManager</code>单例已经是线程安全的了。不论你读或是写图片数组，你都有信心保证操作会安全的执行。</p>
+
+<h2>回顾</h2>
+
+<p>还是不能100%的确定GCD的本质？你可以自己创建使用GCD函数的简单例子，通过断点和<code>NSLog</code>来确保你明白发生了什么。</p>
+
+<p>我这里有两张动态GIF图片来帮助你理解<code>dispatch_async</code>和<code>dispatch_sync</code>。每张GIF上面都有代码辅助你理解；注意代码中的断点和相应的队列状态。</p>
+
+<h3>重访dispatch_sync</h3>
+
+<p>```
+override func viewDidLoad() {
+  super.viewDidLoad()</p>
+
+<p>  dispatch_sync(dispatch_get_global_queue(</p>
+
+<pre><code>  Int(QOS_CLASS_USER_INTERACTIVE.value), 0)) {
+
+NSLog("First Log")
+</code></pre>
+
+<p>  }</p>
+
+<p>  NSLog(&ldquo;Second Log&rdquo;)
+}
+```
+<img src="http://cdn4.raywenderlich.com/wp-content/uploads/2014/08/dispatch_sync_in_action_swift.gif" alt="" /></p>
+
+<p>下面对图片中的几个状态做说明：
+1. 主队列按部就班的执行任务 —— 紧接着的任务是实例化包含<code>viewDidLoad</code>的<code>UIViewController</code>类。
+2. <code>viewDidLoad</code>在主线程中执行。
+3. <code>dispatch_sync</code>闭包被加入到全局队列中稍后执行。主线程停下来等待闭包完成。同时，全局队列正在并发执行任务；记住闭包以FIFO的顺序从全局队列中取出，但是会并发地执行。全局队列首先处理<code>dispatch_sync</code>闭包加入前已经存在队列中的任务。
+4. 最后，轮到<code>dispatch_sync</code>闭包执行。
+5. 闭包执行完毕，主线程得以继续。
+6. <code>viewDidLoad</code>方法完成，主队列接着处理其它任务。</p>
+
+<p><code>dispatch_sync</code>把任务加入队列并一直等待其完成。<code>dispatch_async</code>做了差不多的工作，只是它不会等待任务完成，而是转而去继续其他工作。</p>
+
+<h3>重访dispatch_async</h3>
+
+<p>```
+override func viewDidLoad() {
+  super.viewDidLoad()</p>
+
+<p>  dispatch_async(dispatch_get_global_queue(</p>
+
+<pre><code>  Int(QOS_CLASS_USER_INTERACTIVE.value), 0)) {
+
+NSLog("First Log")
+</code></pre>
+
+<p>  }</p>
+
+<p>  NSLog(&ldquo;Second Log&rdquo;)
+}
+```
+<img src="http://cdn4.raywenderlich.com/wp-content/uploads/2014/08/dispatch_async_in_action_swift.gif" alt="" /></p>
+
+<ol>
+<li>主队列按部就班的执行任务 —— 紧接着的任务是实例化包含<code>viewDidLoad</code>的<code>UIViewController</code>类。</li>
+<li><code>viewDidLoad</code>在主线程中执行。</li>
+<li><code>dispatch_async</code>闭包被加入到全局队列中稍后执行。</li>
+<li><code>viewDidLoad</code>在<code>dispatch_async</code>后继续向下执行，主线程继续其他任务。同时，全局队列正在并发执行任务；记住闭包以FIFO的顺序从全局队列中取出，但是会并发地执行。</li>
+<li>执行<code>dispatch_async</code>所添加的闭包。</li>
+<li><code>dispatch_async</code>闭包完成，<code>NSLog</code>输出到控制台。</li>
+</ol>
+
+
+<p>在这个特别的例子中，第一个<code>NSLog</code>在第二个<code>NSLog</code>后执行。事实并非总是如此——这取决于硬件在彼时正在做什么，你无法控制或知晓哪个语句会先执行。“第一个”<code>NSLog</code>在某种调用情况下可能会先执行。</p>
+
+<h1>下一步？</h1>
+
+<p>在本教程中，你已经学到了如何编写线程安全的代码以及如何在保持主线程响应性的前提下执行CPU密集型的任务。</p>
+
+<p>可以下载<a href="http://cdn4.raywenderlich.com/wp-content/uploads/2015/01/GooglyPuff_Swift_End_1_Xcode61_start.zip">GooglyPuff</a>，里面包含了本教程中所做的所有改进。教程的第二部分会在此基础上继续改进。</p>
+
+<p>如果你打算优化自己的app，你真的应该使用  <strong>Instruments</strong> 中的<strong>Time Profile</strong> 模板来测试。使用方法已经超出本教程范围，可以查看<a href="http://www.raywenderlich.com/?p=23037">怎样使用Instruments</a>。</p>
+
+<p>同时确保你在真机上测试，因为在模拟器上测试会得到跟真实体验相差甚远的结果。</p>
+
+<p>在教程的下篇你会更深入GCD的API中做些更酷的事情。</p>
+
+<p>译者：<a href="http://www.loveltyoic.com">loveltyoic</a></p>
+]]></content>
+  </entry>
+  
+</feed>

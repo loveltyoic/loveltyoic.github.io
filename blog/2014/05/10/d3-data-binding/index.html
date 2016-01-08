@@ -1,0 +1,472 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>D3中的数据绑定--enter()和exit() - Think Different</title>
+  <meta name="author" content="李梓赫">
+
+  
+  <meta name="description" content="最近的几个项目都用到了D3,各种各样的图也画了一些，算是积攒了一点经验。 在D3的主页上可以看到各种各样的实现例子和源码，基本上常见的图都可以找到，是很好的边做边学的材料。 但是对于初学者来说，比如本人，总会看到一些代码不太能理解，虽然照猫画虎的实现了，但总觉得少了点融会贯通的感觉。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://loveltyoic.github.io/blog/2014/05/10/d3-data-binding">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Think Different" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-45531479-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Think Different</a></h1>
+  
+    <h2>我们可以一次一次去撞南墙，但不能一个一个失去理想</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:loveltyoic.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">日志</a></li>
+  <li><a href="/blog/archives">文章归档</a></li>
+  <li><a href="/about/">关于我</a></li>
+  <li><a href="/books/">我的书单</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">D3中的数据绑定--enter()和exit()</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-05-10T20:04:00+08:00" pubdate data-updated="true">May 10<span>th</span>, 2014</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>最近的几个项目都用到了<a href="http://d3js.org/">D3</a>,各种各样的图也画了一些，算是积攒了一点经验。</p>
+
+<p>在D3的主页上可以看到各种各样的实现例子和源码，基本上常见的图都可以找到，是很好的边做边学的材料。</p>
+
+<p>但是对于初学者来说，比如本人，总会看到一些代码不太能理解，虽然照猫画虎的实现了，但总觉得少了点融会贯通的感觉。
+不过随着经验的积累，加上各种大牛的分享，还是摸到了一些门道。</p>
+
+<p>其实D3本质上来说做的就是将数据绑定到元素上去，一切看上去很神奇图型都是建立在这个基础之上的。因此，深入了解D3中的数据绑定是十分必要的。一旦掌握，很容易做到举一反三，即使是一些复杂的图也都不在话下啦。</p>
+
+<!-- more -->
+
+
+<p>OK，感想到此为止。</p>
+
+<p>Give me example!
+<a href="https://gist.github.com/loveltyoic/4d4c8d6fa1c10e46518b">完整代码在这里</a>，可以copy后用chrome等打开，从console中执行其中的三个函数，边看边操作我认为永远是最好的学习方式:)</p>
+
+<p>首先,要讲数据绑定，没数据怎么行</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='js'><span class='line'><span class="kd">var</span> <span class="nx">data_1</span> <span class="o">=</span> <span class="p">[{</span><span class="nx">x</span><span class="o">:</span><span class="mi">100</span><span class="p">,</span><span class="nx">y</span><span class="o">:</span><span class="mi">100</span><span class="p">},</span> <span class="p">{</span><span class="nx">x</span><span class="o">:</span><span class="mi">200</span><span class="p">,</span><span class="nx">y</span><span class="o">:</span><span class="mi">200</span><span class="p">},</span> <span class="p">{</span><span class="nx">x</span><span class="o">:</span><span class="mi">300</span><span class="p">,</span><span class="nx">y</span><span class="o">:</span><span class="mi">300</span><span class="p">}],</span>
+</span><span class='line'>    <span class="nx">data_2</span> <span class="o">=</span> <span class="p">[{</span><span class="nx">x</span><span class="o">:</span><span class="mi">50</span><span class="p">,</span><span class="nx">y</span><span class="o">:</span><span class="mi">50</span><span class="p">},</span> <span class="p">{</span><span class="nx">x</span><span class="o">:</span><span class="mi">150</span><span class="p">,</span><span class="nx">y</span><span class="o">:</span><span class="mi">150</span><span class="p">}],</span>
+</span><span class='line'>    <span class="nx">data_3</span> <span class="o">=</span> <span class="p">[{</span><span class="nx">x</span><span class="o">:</span><span class="mi">400</span><span class="p">,</span><span class="nx">y</span><span class="o">:</span><span class="mi">400</span><span class="p">},</span> <span class="p">{</span><span class="nx">x</span><span class="o">:</span><span class="mi">500</span><span class="p">,</span><span class="nx">y</span><span class="o">:</span><span class="mi">500</span><span class="p">},</span> <span class="p">{</span><span class="nx">x</span><span class="o">:</span><span class="mi">600</span><span class="p">,</span><span class="nx">y</span><span class="o">:</span><span class="mi">600</span><span class="p">}];</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>可以看出，这里定义了三组数据，都是数组类型。接下来画一个svg的容器:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='js'><span class='line'><span class="kd">var</span> <span class="nx">svg</span> <span class="o">=</span> <span class="nx">d3</span><span class="p">.</span><span class="nx">select</span><span class="p">(</span><span class="s1">&#39;body&#39;</span><span class="p">).</span><span class="nx">append</span><span class="p">(</span><span class="s1">&#39;svg&#39;</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;width&#39;</span><span class="p">,</span> <span class="s1">&#39;800&#39;</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;height&#39;</span><span class="p">,</span> <span class="s1">&#39;800&#39;</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后，重点来啦</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='js'><span class='line'><span class="kd">function</span> <span class="nx">draw1</span><span class="p">(){</span>
+</span><span class='line'>  <span class="nx">svg</span><span class="p">.</span><span class="nx">selectAll</span><span class="p">(</span><span class="s1">&#39;circle&#39;</span><span class="p">).</span><span class="nx">data</span><span class="p">(</span><span class="nx">data_1</span><span class="p">).</span><span class="nx">enter</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="s1">&#39;circle&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">.</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;20&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">.</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;cx&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">d</span><span class="p">){</span>
+</span><span class='line'>        <span class="k">return</span> <span class="nx">d</span><span class="p">.</span><span class="nx">x</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">})</span>
+</span><span class='line'>      <span class="p">.</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;cy&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">d</span><span class="p">){</span>
+</span><span class='line'>        <span class="k">return</span> <span class="nx">d</span><span class="p">.</span><span class="nx">y</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">});</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这是第一个函数，注意里面的<code>data(data_1)</code>，这就是把<code>data_1</code>绑定到所有<code>circle</code>元素上啦。</p>
+
+<p>But wait!根本没有什么<code>circle</code>元素好不好，忽悠谁呢。</p>
+
+<p>的确，这时候还没有<code>circle</code>，但是好戏还在后面呢不是,紧接着不就是<code>enter()</code>了吗。</p>
+
+<p>我在开始的时候，也是完全不懂<code>enter()</code>是神马意思啊，看到例子里面都写，咱也照做呗。但要是一直不去弄懂，那水平也就止于模仿了，何谈超越呢？</p>
+
+<p>这个<code>enter()</code>啊，单独讲还真不好说，这也就是为啥我准备了三个例子，等都看完了，理解的应该就算比较全面了。
+就先从这第一讲起吧。</p>
+
+<p>因为没有<code>circle</code>, 此时<code>selectAll('circle')</code>只会返回一个空的数组<code>[]</code>。但神奇的是，这个空的数组上调用<code>enter()</code>后，会生成与这里的<code>data_1</code>等长的一个groups数组，然后将数据一一对应的绑定到groups中的每个元素上去。
+具体到这里，因为<code>data_1</code>有三个数据，所以会生成三个元素。</p>
+
+<p>这个占位元素会作为接下来执行操作的容器。比如这里的<code>append('circle')</code>, 就是在元素上画圆点。</p>
+
+<p>最为神奇的是, 因为此时每个元素已经有了自己的数据绑定，我们可以通过<code>function(d){}</code>来获取到绑定的数据。并且还可以用<code>function(d,i){}</code>中的<code>i</code>来获取到数据在数组中的位置。</p>
+
+<p>讲到这里，故事还远远没有结束。</p>
+
+<p>数据往往是变化的，那么图表也应该随之变化才对嘛。</p>
+
+<p>看第二个例子：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='js'><span class='line'><span class="kd">function</span> <span class="nx">draw2</span><span class="p">(){</span>
+</span><span class='line'>  <span class="c1">//part 1</span>
+</span><span class='line'>  <span class="nx">svg</span><span class="p">.</span><span class="nx">selectAll</span><span class="p">(</span><span class="s1">&#39;circle&#39;</span><span class="p">).</span><span class="nx">data</span><span class="p">(</span><span class="nx">data_2</span><span class="p">).</span><span class="nx">exit</span><span class="p">().</span><span class="nx">remove</span><span class="p">();</span>
+</span><span class='line'>  <span class="c1">//part 2</span>
+</span><span class='line'>  <span class="nx">svg</span><span class="p">.</span><span class="nx">selectAll</span><span class="p">(</span><span class="s1">&#39;circle&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">.</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;20&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">.</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;cx&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">d</span><span class="p">){</span>
+</span><span class='line'>        <span class="k">return</span> <span class="nx">d</span><span class="p">.</span><span class="nx">x</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">})</span>
+</span><span class='line'>      <span class="p">.</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;cy&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">d</span><span class="p">){</span>
+</span><span class='line'>        <span class="k">return</span> <span class="nx">d</span><span class="p">.</span><span class="nx">y</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">});</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>
+有enter(),怎么能没有exit()。倒是看看这个exit()有何神通。</p>
+
+<p>看回前面，<code>data_2</code>中只有两个数据，可是在我们运行了draw1()之后，此时就已经有了3个<code>circle</code>元素。可是之后我们却只给它绑定了2个数据，这是二桃杀三士的节奏么？</p>
+
+<p>停止联想，我们还是来看看会发生什么吧。</p>
+
+<p>最后的<code>circle</code>元素因为没有绑定到元素。他的数据会变成null，也就是没有数据。是时候让<code>exit()</code>登场了。</p>
+
+<p>因为这个<code>circle</code>没有数据，他会被exit()捕获，然后就任杀任剐息听尊便啦。一般就是将这个元素从页面上删除，当然还可以用些动画来展现。</p>
+
+<p>不过还有一点必须提到，虽然绑定的数据变化了，但是元素的视图可不会自动的改变。
+也就是说，要想更新视图，需要用新数据来更新他们的属性。由part 2实现。</p>
+
+<p>你以为这就结束了吗？还不够！！！</p>
+
+<p>再来看看最后一个例子。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='js'><span class='line'><span class="kd">function</span> <span class="nx">draw3</span><span class="p">(){</span>
+</span><span class='line'>  <span class="c1">//part 1</span>
+</span><span class='line'>  <span class="nx">svg</span><span class="p">.</span><span class="nx">selectAll</span><span class="p">(</span><span class="s1">&#39;circle&#39;</span><span class="p">).</span><span class="nx">data</span><span class="p">(</span><span class="nx">data_3</span><span class="p">).</span><span class="nx">enter</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="s1">&#39;circle&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">.</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">,</span><span class="s1">&#39;30&#39;</span><span class="p">);</span>
+</span><span class='line'>  <span class="c1">//part 2    </span>
+</span><span class='line'>  <span class="nx">svg</span><span class="p">.</span><span class="nx">selectAll</span><span class="p">(</span><span class="s1">&#39;circle&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">.</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;cx&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">d</span><span class="p">){</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">d</span><span class="p">.</span><span class="nx">x</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">})</span>
+</span><span class='line'>    <span class="p">.</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;cy&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">d</span><span class="p">){</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">d</span><span class="p">.</span><span class="nx">y</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">});</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>数据又更新啦啦啦啦，变成三个点！！！</p>
+
+<p>这个时候<code>enter()</code>会发生什么呢？因为只有2个<code>circle</code>，却绑定了三个数据，自然要生成一个新的元素。</p>
+
+<p>看到没，这里特别将圆点的半径改成30了，当然是有意为之，接着看。</p>
+
+<p>接下来<code>selectAll('circle')</code>，然后重绘他们的坐标位置。</p>
+
+<p>看，新增点的半径是30，但是其他两个点还是20！</p>
+
+<p>这就是玄机啊。当重新绑定数据后再enter(),此时操作的只是groups中新增的那些元素。因为新增了一条数据，会首先生成一个元素容器，然后绑定数据到他身上，再之后的<code>append</code>也只是针对这个新元素，而不会影响已有元素。
+对已存在的元素来说，变化的只有绑定的数据。只有再次选择并更新属性，才会变化视图。即part 2的实现。</p>
+
+<p>最后还有一点补充，D3中还有另一个绑定数据的datum()，其实就只是很简单的绑定一条数据到一个元素上。</p>
+
+<p>举个简单例子</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='js'><span class='line'><span class="kd">var</span> <span class="nx">line</span> <span class="o">=</span> <span class="nx">d3</span><span class="p">.</span><span class="nx">svg</span><span class="p">.</span><span class="nx">line</span><span class="p">()</span>
+</span><span class='line'>             <span class="p">.</span><span class="nx">x</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">d</span><span class="p">,</span> <span class="nx">i</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">i</span><span class="p">;</span> <span class="p">})</span>
+</span><span class='line'>             <span class="p">.</span><span class="nx">y</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">d</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">d</span><span class="p">;</span> <span class="p">})</span>
+</span><span class='line'><span class="c1">//1             </span>
+</span><span class='line'><span class="nx">svg</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">.</span><span class="nx">datum</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+</span><span class='line'>  <span class="p">.</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;d&#39;</span><span class="p">,</span> <span class="nx">line</span><span class="p">);</span>
+</span><span class='line'><span class="c1">//2  </span>
+</span><span class='line'><span class="nx">svg</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">.</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;d&#39;</span><span class="p">,</span> <span class="nx">line</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>           <br/>
+看到1和2的区别了么？</p>
+
+<p>1是在画之前用datum绑定数据到path上，虽然数据是个数组，但这与<code>data()</code>的用法相差甚远。</p>
+
+<p>这里的数据同样是数组，却是因为画线需要提供多个点的数据，并且[1,2,3]是只绑定到这个path上的，不会像<code>data()</code>一样有多少数据就生成多少元素。</p>
+
+<p>甚至可以不用<code>datum()</code>，只是在调用<code>line()</code>的时候作为参数给它,像2中的实现方法.</p>
+
+<p>虽然画出来效果是一样的，但区别在于，2的方式没有没有绑定数据到path.</p>
+
+<p>通过<code>selectAll('path').data()</code>一看便知</p>
+
+<p><a href="http://bost.ocks.org/mike/selection/#data">D3作者的文章</a>，甩我这里讲的N条街，真正的深入理解，感谢作者！</p>
+
+<p>乎，好久没更新文章了，写blog其实真的蛮有快感呐。即使文笔再烂，即使水平有限，但分享永远是快乐的！</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">李梓赫</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-05-10T20:04:00+08:00" pubdate data-updated="true">May 10<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ux/'>UX</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/12/14/how-to-build-website/" title="Previous Post: 大话搭建网站">&laquo; 大话搭建网站</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/11/21/active-record-callbacks/" title="Next Post: ActiveRecord中的Callback浅析">ActiveRecord中的Callback浅析 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Hi, 我是李梓赫</h1>
+  <image class='avatar' src="http://www.gravatar.com/avatar/a844b930506d452d63483620a3fec297?s=200">
+</section>
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/loveltyoic">@loveltyoic</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'loveltyoic',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - 李梓赫 -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loveltyoic';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://loveltyoic.github.io/blog/2014/05/10/d3-data-binding/';
+        var disqus_url = 'http://loveltyoic.github.io/blog/2014/05/10/d3-data-binding/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

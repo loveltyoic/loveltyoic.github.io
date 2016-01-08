@@ -1,0 +1,166 @@
+---
+layout: post
+title: Logstash使用以及Filter插件
+date: 2016-01-08 13:41
+comments: true
+categories: ELK
+---
+
+> Logstash可以理解为一个数据的管道，它可以从各种来源获取数据，经过处理后再输出到其他数据源。
+
+下面就结合实际应用中的ELK来做一些介绍。
+
+Logstash的使用重点就在于配置文件的书写，实际上，配置文件就是Ruby实现的DSL文法。直接贴个生产中的例子：
+```
+input {
+  file {
+    path => ['/data/INFO/INFO_*.txt'] //源文件的path,支持glob
+    start_position => 'beginning'
+    sincedb_path => '/var/sincedb/gangtie'
+    follow_only_path => true
+  }
+}
+
+output {
+  elasticsearch {
+    host => '127.0.0.1' //ES的host
+    index => "gangtie-log-%{+YYYY.MM.dd}" //索引的名字，支持动态生成根据日期的索引
+    template => '/etc/logstash/conf.d/templates/gangtie_template' //索引模板
+    template_name => 'gangtie-template' //模板再ES中的命名
+    template_overwrite => true //新模版是否覆盖旧模板
+    manage_template => true //true表示logstash可以向ES中写入模板，false的话上面的配置就不起作用了
+    user => 'logstash-user' //在ES使用Basic认证时的用户名密码
+    password => '2014Patch'
+    protocol => 'http' //数据传输协议
+  }
+}
+filter {
+  grok {
+    match => { "path" => "/data/INFO/INFO_(?<date>\d{8})\d{2}" }
+  }
+
+  gangtie {}
+
+  if [date] and [time] {
+    mutate {
+      replace => { "time" => "%{date} %{time}" }
+    }
+  }
+
+  date {
+    match => ["time", "YYYYMMdd HH:mm:ss"]
+    remove_field => ["time","date","host","path"]
+  }
+  if "_grokparsefailure" in [tags] {
+    drop {}
+  }
+}
+```
+
+配置文件由三部分组成，输入，输出，过滤，所有步骤都是插件。我们对数据的处理一般就是在过滤步骤中实现的，因此通过编写过滤插件，我们可以实现特定的处理逻辑，这部分放到最后来讲，先来看输入输出部分。
+
+## 输入
+从[官方文档](https://www.elastic.co/guide/en/logstash/current/input-plugins.html)可以看出，Logstash支持巨多的输入源，非常灵活，具体每种输入都可以从文档中找到使用方法。
+
+从上面的配置文件看出，我们选择的是最简单的从文件读取。对于文件读取，logstash需要记录下对每个文件当前处理的行数，因此通过sincedb_path这个选项来指定记录的文件，当logstash启动后，这个文件每一行就记录了对一个文件的处理位置，例如：
+`/data/INFO/INFO_2015122716.txt 0 64785 134`
+最后一个数字134就表明`/data/INFO/INFO_2015122716.txt`这个文件已经处理完了134行。
+
+简单说一下file的处理机制：
+logstash会监视`path`指定的所有文件，当文件有变化或者出现了新文件时，会触发对这个文件的处理，首先从`sincedb_path`中获取到对这个文件处理到第几行，然后直接从下一行开始处理。如果是新文件，会根据`start_position`来指定是从头开始处理，还是从尾部开始（忽略之前的内容，只有新增的内容才会被处理）。所以在处理历史日志时，我们肯定要指定为`beginning`。
+
+值得一提的是，这个记录文件中的第一个字段本来是所处理文件的inode。而我们通过修改源码来把它改成了文件的文件名。为什么要这么做？因为我们处理的文件是通过`rsync`同步来的，而`rsync`是会改变文件的`inode`的，在这种场景下，无法通过`inode`来监视已处理过的文件，顾只能转而采取文件名了。
+
+## 输出
+
+我们的应用是典型的ELK，也就是说将日志输出到Elasticsearch中。
+值得一提的是索引名字的配置。在典型的日志处理中，会将每天的日志按日期生成索引，这一点可以轻松的做到。只要输出到ES的数据包含一个类型是`date`的`@timestamp`字段（可以通过`date` 插件自动生成），es输出插件就可以从这个字段中提取出日期，然后按照配置的日期格式创建索引。
+
+当然除了输出到ES，通过各种[输出插件](https://www.elastic.co/guide/en/logstash/current/output-plugins.html)，数据也可以输出到各种不同的数据源。
+
+
+## 过滤
+
+将数据从一种源转移到另一种源的过程中，我们往往需要对数据进行处理，比如日期格式的转化，ip到地理位置的转化，以及各种字段的提取等等，这些处理再logstash中都由过滤插件来处理。
+
+当然对于一些常见的处理，logstash已经提供了大量的[插件](https://www.elastic.co/guide/en/logstash/current/filter-plugins.html)。
+
+比如上面的配置文件中用到的
+* `grok` 正则匹配插件。对于一行文本，通过正则匹配来提取各种字段。可以通过[这个工具](http://grokdebug.herokuapp.com)来调试你的正则表达式。
+*  `date` 提取文本中的时间信息，往往是先通过如grok的方式来提取出一个包含时间的字符串，这个时间字符串可能是各种格式，比如`2015/11/12`，也可能是`Apr 17 09:32:01`，这种格式不一的数据无法在管道的下游被正确的使用，因此需要通过`date`来转化成一个logstash所规定的标准的时间格式`@timestamp`，从而被其他的插件认出。
+
+虽然logstash提供了大量的过滤插件，但也只能是一些通用用途的插件。我们在实际生产中免不了会需要针对特定业务需求的处理逻辑。得益于logstash强大的插件机制，我们可以很方便的添加自己编写的插件。幸运的是，logstash的插件编写要使用Ruby：）。如果你没接触过Ruby，是时候感受下Ruby的易用性了！
+
+
+### 过滤插件示例
+
+感谢logstash为为我们提供了一个过滤插件的[模板](https://github.com/logstash-plugins/logstash-filter-example)。
+
+可以直接在这个模板的基础上修改，从而创建一个符合我们特定需求的过滤插件，以下均以`gangtie`这个插件为例。
+
+1. 首先是`logstash-filter-example.gemspec`文件，重命名为`logstash-filter-gangtie.gemspec`。文件内容就按一般gemspec来改就好了，比如name要改成`logstash-filter-gangtie`，以及加入所需的gem依赖。
+
+2. 接下来将`lib/logstash/filters/example.rb`这个文件重命名为`lib/logstash/filters/gangtie.rb`，我们所有的处理逻辑都是在这个脚本中实现的。
+
+```ruby
+# encoding: utf-8
+require "logstash/filters/base"
+require "logstash/namespace"
+
+# This example filter will replace the contents of the default 
+# message field with whatever you specify in the configuration.
+#
+# It is only intended to be used as an example.
+class LogStash::Filters::Example < LogStash::Filters::Base
+
+  # Setting the config_name here is required. This is how you
+  # configure this filter from your Logstash config.
+  #
+  # filter {
+  #   example {
+  #     message => "My message..."
+  #   }
+  # }
+  #
+  config_name "example"
+  
+  # Replace the message with this value.
+  config :message, :validate => :string, :default => "Hello World!"
+  
+
+  public
+  def register
+    # Add instance variables 
+  end # def register
+
+  public
+  def filter(event)
+
+    if @message
+      # Replace the event message with our message as configured in the
+      # config file.
+      event["message"] = @message
+    end
+
+    # filter_matched should go in the last line of our successful code
+    filter_matched(event)
+  end # def filter
+end # class LogStash::Filters::Example
+```
+
+其中config_name就是插件的名字，我们会改成"gangtie"。
+通过`config :xxx`，可以设置插件支持的配置项，每个配置项的值都可以通过实例变量@xxx来得到。
+比如`date`filter中的
+```
+config :timezone, :validate => :string
+```
+后面就可以通过@timezone来获取到这个配置的值。
+
+每一条数据的原始值都存在event["message"]中，通过其它过滤插件提取出的字段xxx可以通过event["xxx"]来获取。
+需要注意的是，过滤插件的执行顺序与配置文件中的顺序是一致的。再来看开头贴出来的配置文件，再`gangtie`之前我们已经通过grok提取出来了一个`date`字段，所以我们在代码中就可以通过`event["date"]`来取得这个字段了！
+
+在弄清楚了过滤插件的处理机制后，剩下就是根据业务需求来对原始信息进行处理了，而用Ruby来处理这些文本类数据是很轻松的。另外，logstash自带的插件就是学习的最好例子。
+
+
+
+

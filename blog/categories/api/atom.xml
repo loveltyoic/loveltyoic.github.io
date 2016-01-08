@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: api | Think Different]]></title>
+  <link href="http://loveltyoic.github.io/blog/categories/api/atom.xml" rel="self"/>
+  <link href="http://loveltyoic.github.io/"/>
+  <updated>2015-06-23T17:00:32+08:00</updated>
+  <id>http://loveltyoic.github.io/</id>
+  <author>
+    <name><![CDATA[李梓赫]]></name>
+    <email><![CDATA[loveltyoic@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[使用goliath+grape构建API服务]]></title>
+    <link href="http://loveltyoic.github.io/blog/2013/11/13/grape/"/>
+    <updated>2013-11-13T06:51:00+08:00</updated>
+    <id>http://loveltyoic.github.io/blog/2013/11/13/grape</id>
+    <content type="html"><![CDATA[<p>无论是自己使用还是提供给开发者，API接口服务都是一件比较普遍且重要的需求。
+花了一天时间了解了一下这个方面，先记录下来。</p>
+
+<p>主要用到了两个gem: <a href="https://github.com/postrank-labs/goliath">goliath</a>与<a href="https://github.com/intridea/grape">grape</a>。
+他们的文档都比较详细，我就直接具体说下我是怎么做的吧(不管你喜不喜欢，反正我是最喜欢看example了~)。</p>
+
+<!-- more  -->
+
+
+<p>先来分解一下整个流程：
+客户端request => goliath => grape => response</p>
+
+<h3>启动服务</h3>
+
+<p>首先定义一个接收请求的Server(名字随便取):
+```ruby
+class Server &lt; Goliath::API</p>
+
+<p>  def response(env)</p>
+
+<pre><code>GitCafe::GitApi.call(env)
+</code></pre>
+
+<p>  end</p>
+
+<p>end
+```
+可以看到，Goliath会把请求委派给GitApi，然后将返回的数据封装后回传到客户端</p>
+
+<h3>处理请求</h3>
+
+<p>```ruby
+class GitApi &lt; Grape::API</p>
+
+<pre><code>version 'v1', :using =&gt; :path
+format :json
+
+resource :commits do
+  desc 'List all commits of a branch'
+  params do
+    requires :path, :type =&gt; String
+    requires :repo_name, :type =&gt; String
+    requires :branch, :type =&gt; String
+  end
+  get '/' do
+    commits = GitCafe::Commit.new(params[:path], params[:repo_name])
+    commits.index(params[:branch])
+  end
+
+end
+</code></pre>
+
+<p>end
+```
+GitApi从Grape::API继承而来，需要按照Grape的格式来定义。</p>
+
+<ul>
+<li>format指定返回的数据类型，基本上API都是返回json的。</li>
+<li>resource类似rails中routes的含义.</li>
+<li>params指定请求中需要包含的参数及类型。</li>
+<li>最后是http verb及路径。对匹配的请求，执行相应的处理。
+由于指定了format为json，所以Grape会自动将ruby中的hash准换为json格式的数据，不需要自己动手了。
+比如针对这个请求，我直接返回如下的hash:
+<code>ruby
+{
+result: true,
+data: {
+  branch: branch,
+  commits: commits
+}
+}
+</code>
+
+<h3>API请求</h3>
+
+<p>好了，我们的服务已经构建好了，那么怎么请求这个API服务呢？
+对照着上面的定义，用curl请求的话应该是这样的：
+<code>sh
+curl -X GET -d "path=test&amp;repo_name=test_repo&amp;branch=master" localhost:9000/v1/commits
+</code>
+在host后面的'v1'就是在GitApi中指定的版本号了，而commits就是resourse的名字。</p></li>
+</ul>
+
+
+<p>暂时了解的就是这么多了，只是很基础的实现了功能，等以后有需求的时候再更深入的研究一下吧。</p>
+
+<p>完整的代码请猛击<a href="https://github.com/loveltyoic/grit">github</a></p>
+]]></content>
+  </entry>
+  
+</feed>

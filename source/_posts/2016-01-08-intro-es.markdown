@@ -1,0 +1,82 @@
+---
+layout: post
+title: Elaticsearch安装与使用
+date: 2016-01-08 13:37
+comments: true
+categories: ELK
+--- 
+
+最近的工作中需要搭建一个游戏数据的日志分析平台，经过调研后选择了ELK。近期会总结一些相关的内容，先从Elasticsearch开始吧。
+
+<!-- more -->
+
+## 安装
+看[官网](https://www.elastic.co/downloads/elasticsearch)的步骤就好
+
+##  配置
+所有配置都在elasticsearch.yml这个配置文件中。很多项直接看注释就可以明白是什么意思了，比如：
+  * cluster.name 集群名字，所有属于这个集群的节点都要设置成相同的。
+  * node.name 节点名字，集群中节点的名字要各不相同
+  * node.master, node.data 默认既是主节点又是数据节点。主节点就是可以接收API命令，而数据节点就是可以存储数据。
+  * index.number_of_shards 默认每个索引分片数，在建索引的时候也可以指定，每个索引都可以有不同的分片数。
+  * index.number_of_replicas 默认备份数，不备份就是0。注意一点是备份和主分片要在不同的机器上，如果集群中只有一个节点，但是备份数大于0，那么备份会没地方分配，结果就是集群的健康值会是yellow。
+  * path.data 数据存放路径
+  * network.host 绑定的IP，一般就是设成内网IP。
+  * discovery.zen.ping.unicast.hosts 集群内的master节点IP，数组形式的，比如["10.174.34.56"]。当新节点加入时，需要通过这个列表来跟master取得联系。
+  * discovery.zen.ping.multicast.enabled ES会默认开启多播，这样当新节点加入时，即使不设置上面的主节点列表，也可以自动发现master。看似很方便，但是如果网络中有多个集群，那么新节点就不知道会加入到哪个集群当中了，所以一般将这个项设为false，转而通过上面的配置来指定加入的集群。
+
+## 插件
+ES丰富的插件也是其快速流行的原因之一。通过插件，我们可以获取到多种多样的功能，比如监控，比如管理索引，以及后面会提到的安全控制及分词等。下面简单列出几个常用插件，更多可以到[官方文档](https://www.elastic.co/guide/en/elasticsearch/plugins/current/index.html)中查看。
+* head 可以通过页面来查看索引，模板，集群状态以及尝试各种ES的API。
+* bigdesk 也是页面插件，主要用来看集群的状态。
+
+## 安全
+ES本身是没有安全管理的，如果只是需要限制ES访问，可以将IP绑定到内网IP，然后通过类似nginx反向代理来对外提供查询。
+
+如果要提供更细粒度的访问控制，就需要求助于ES插件了。
+
+ES本身有一个叫shield的安全插件，可以免费使用1个月，到期后如果不更新License，集群状态和索引状态的API都会变得不可用，对于生产环境来说，这显然是不可接受的。但是由于是官方出品，会随着ES进行升级，文档也更详细。
+
+另外一个开源插件searchguard也可以达到类似的访问控制，但是貌似作者并不维护这个项目了，所以这个插件只能支持到ES1.6版本。而ES已经升级到2.x版本了。。。所以目前想用这个插件的话，ES最高就只能使用1.6版本。
+
+## 分词
+ES本身是一个搜索引擎，所以很多人会用它来做全文搜索。但ES自带的中文分词可以说基本不能用，好在国内已经有大神们做了这件事：）
+
+目前在用的分词插件是[ik](https://github.com/medcl/elasticsearch-analysis-ik)，使用方法看项目README就可以了。
+
+ES在建索引时，可以通过mapping来指定某个字段的分词器，比如下面就将content字段的分词器指定为ik_max_word：
+```
+curl -XPOST http://localhost:9200/index/fulltext/_mapping -d'
+{
+    "fulltext": {
+             "_all": {
+            "indexAnalyzer": "ik_max_word",
+            "searchAnalyzer": "ik_max_word",
+            "term_vector": "no",
+            "store": "false"
+        },
+        "properties": {
+            "content": {
+                "type": "string",
+                "store": "no",
+                "term_vector": "with_positions_offsets",
+                "indexAnalyzer": "ik_max_word",
+                "searchAnalyzer": "ik_max_word",
+                "include_in_all": "true",
+                "boost": 8
+            }
+        }
+    }
+}'
+```
+另外，ES提供的分析API也可以用来测试一下分词的效果
+```
+curl http://localhost:9200/_analyze?analyzer=ik_smart -d '我爱北京天安门'
+```
+
+## Client
+
+* ES对外提供了丰富的REST API接口，但是实际开发中频繁使用原始的API接口并不十分方便，我们更喜欢针对某种开发语言而提供的客户端。
+不出意料的，一些主流语言都有自己包装好的[client](https://www.elastic.co/guide/en/elasticsearch/client/index.html)了。
+
+* 除了针对开发语言的客户端，ES还有一个好用的命令行客户端[Curator](https://github.com/elastic/curator)。安装后执行curator就会列出所有支持的操作。

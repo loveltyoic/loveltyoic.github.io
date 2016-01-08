@@ -1,0 +1,56 @@
+---
+layout: post
+title: 使用Spark查询Elasticsearch
+date: 2016-01-08 13:42
+comments: true
+categories: 
+---
+
+Spark可以从多种数据源来读取数据，而不仅限于HDFS。
+借助于Spark SQL，甚至可以像操作关系型数据库一样在大规模分布式数据集上进行查询。ES官方提供了一个ES与Hadoop生态进行交互的接口库[elasticsearch-hadoop](https://www.elastic.co/guide/en/elasticsearch/hadoop/master/reference.html)。利用这个库，我们能够方便的在Spark中对ES的数据进行各种高级查询，比如多表的join查询。
+
+## 添加依赖
+首先需要将库文件，也就是jar包的路径加到spark_root/conf/spark.env.sh中的SPARK_CLASSPATH中，注意选择符合的版本，比如我用的`elasticsearch-spark_2.10-2.2.0-beta1.jar`。
+
+## 用法
+下面结合我在实际中的用例来简单说明一下用法。
+
+ES本身是不支持join查询的。但我们要根据ES中的日志来计算留存率，需要通过join注册和登录两种日志来算出`有多少用户在n天前注册，并且在今天登录了`。既然Spark SQL支持join查询，又可以操作ES中的数据，那我们不就可以通过Spark来join查询ES了吗！
+
+先上一段代码，这是在spark-shell中运行的，所以直接有了`sc`和`sqlContext`可用。
+
+```scala
+import org.elasticsearch.spark._ //1
+
+import org.elasticsearch.spark.sql._ //2
+
+val login = sqlContext.read.format("org.elasticsearch.spark.sql").options(Map("es.read.field.include" -> "uid")).load("gangtie-log-2015.12.25/19") //3
+
+val register =
+  sqlContext.read.format("org.elasticsearch.spark.sql").
+    options(Map("es.read.field.include" -> "uid")).
+    load("gangtie-log-2015.12.24/20") //4
+
+login.registerTempTable("login") //5
+register.registerTempTable("register") //6
+
+val retention = sqlContext.sql("select count(distinct login.uid) from login inner join register on register.uid = login.uid") //7
+val regCount = sqlContext.sql("select count(distinct uid) from register") //8
+
+val ratio = retention.first.get(0).asInstanceOf[Long].toDouble / regCount.first.get(0).asInstanceOf[Long] //9
+
+val loginData = Map("OneDayRetention" -> ratio, "date" -> "2015-12-24", "register" -> regCount.first.getLong(0)) //10
+
+sc.makeRDD(Seq(loginData)).saveToEs("gangtie-test-spark/login") //11
+```
+
+- 1，2首先引入ES库。
+- 3，4 分别从ES中的索引生成登录和注册的DataFrame。
+因为我们查询中只需要`uid`字段，因此通过options来指明只读取这个字段。
+- 5，6 为了通过sql语句进行查询，我们需要先注册临时表。
+- 7 求24号的次日留存量，也就是看24号注册的用户中，有多少人在25号登录了。
+- 8 根据留存公式，还需要查出24日的注册用户数。
+- 9 提取查询结果并转换类型，计算得出留存率。
+- 10, 11 结果存入ES
+
+以上就是一个用法案例，更多用法可以参照官方文档。

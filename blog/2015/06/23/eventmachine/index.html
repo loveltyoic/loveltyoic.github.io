@@ -1,0 +1,494 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>em-synchrony 中连接池的实现原理 - Think Different</title>
+  <meta name="author" content="李梓赫">
+
+  
+  <meta name="description" content="通过读em-synchrony的代码，发现其中连接池的实现是一个很好的例子，下面就通过模仿em-synchrony线程池的实现来说明我所理解的使用模式。 1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://loveltyoic.github.io/blog/2015/06/23/eventmachine">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Think Different" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-45531479-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Think Different</a></h1>
+  
+    <h2>我们可以一次一次去撞南墙，但不能一个一个失去理想</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:loveltyoic.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">日志</a></li>
+  <li><a href="/blog/archives">文章归档</a></li>
+  <li><a href="/about/">关于我</a></li>
+  <li><a href="/books/">我的书单</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Em-synchrony 中连接池的实现原理</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-06-23T16:54:00+08:00" pubdate data-updated="true">Jun 23<span>rd</span>, 2015</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>通过读em-synchrony的代码，发现其中连接池的实现是一个很好的例子，下面就通过模仿em-synchrony线程池的实现来说明我所理解的使用模式。</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="nb">require</span> <span class="s1">&#39;fiber&#39;</span>
+</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;eventmachine&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">Connection</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">Pool</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+</span><span class='line'>    <span class="c1"># 构造连接的数组，这里用虚构的Connection代替，可以抽象的理解为各种资源，如mysql连接，redis连接...</span>
+</span><span class='line'>    <span class="vi">@connections</span> <span class="o">=</span> <span class="n">size</span><span class="o">.</span><span class="n">times</span><span class="o">.</span><span class="n">map</span> <span class="p">{</span> <span class="no">Connection</span><span class="o">.</span><span class="n">new</span> <span class="p">}</span>
+</span><span class='line'>    <span class="c1"># 等待队列，存放等待资源的fiber</span>
+</span><span class='line'>    <span class="vi">@pending</span> <span class="o">=</span> <span class="o">[]</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">execute</span>
+</span><span class='line'>    <span class="c1"># 获取资源，当没有空闲资源的时候，会让出执行，而不会阻塞进程</span>
+</span><span class='line'>    <span class="n">conn</span> <span class="o">=</span> <span class="n">acquire</span>
+</span><span class='line'>    <span class="c1"># 只有在拿到资源后才会执行到这里</span>
+</span><span class='line'>    <span class="s1">&#39;get conn, do job&#39;</span>
+</span><span class='line'>    <span class="c1"># 传过来的block应该是一个异步的任务</span>
+</span><span class='line'>    <span class="k">yield</span> <span class="n">conn</span> <span class="k">if</span> <span class="nb">block_given?</span>
+</span><span class='line'>    <span class="n">release</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">acquire</span>
+</span><span class='line'>    <span class="n">f</span> <span class="o">=</span> <span class="no">Fiber</span><span class="o">.</span><span class="n">current</span>
+</span><span class='line'>    <span class="c1"># 试图去连接池中拿</span>
+</span><span class='line'>    <span class="n">c</span> <span class="o">=</span> <span class="vi">@connections</span><span class="o">.</span><span class="n">pop</span>
+</span><span class='line'>    <span class="c1"># 拿到了就直接返回</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">c</span> <span class="k">if</span> <span class="n">c</span>
+</span><span class='line'>    <span class="c1"># 如果没拿到，就需要等待</span>
+</span><span class='line'>    <span class="nb">puts</span> <span class="s1">&#39;waiting for connection&#39;</span>
+</span><span class='line'>    <span class="c1"># 但是这里的等待并不是阻塞等待的，因为有了fiber，我们可以在这里让出执行权</span>
+</span><span class='line'>    <span class="c1"># 只要将当前的fiber加入到等待队列中</span>
+</span><span class='line'>    <span class="no">Fiber</span><span class="o">.</span><span class="n">yield</span> <span class="vi">@pending</span><span class="o">.</span><span class="n">push</span> <span class="n">f</span>
+</span><span class='line'>    <span class="c1"># 当fiber被唤醒时，会在这里继续执行，再次尝试acquire</span>
+</span><span class='line'>    <span class="n">acquire</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">release</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+</span><span class='line'>    <span class="c1"># 把连接放回连接池</span>
+</span><span class='line'>    <span class="vi">@connections</span><span class="o">.</span><span class="n">push</span> <span class="n">conn</span>
+</span><span class='line'>    <span class="c1"># 当资源被释放时，会从等待队列中唤醒一个fiber</span>
+</span><span class='line'>    <span class="nb">p</span> <span class="o">=</span> <span class="vi">@pending</span><span class="o">.</span><span class="n">shift</span> <span class="ow">and</span> <span class="nb">p</span><span class="o">.</span><span class="n">resume</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><em>怎么用？</em></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="no">EM</span><span class="o">.</span><span class="n">run</span> <span class="k">do</span>
+</span><span class='line'>  <span class="c1"># 容量为3的资源池</span>
+</span><span class='line'>  <span class="n">pool</span> <span class="o">=</span> <span class="no">Pool</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1"># 其他事件</span>
+</span><span class='line'>  <span class="no">EM</span><span class="o">.</span><span class="n">add_periodic_timer</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="p">{</span> <span class="nb">puts</span> <span class="s1">&#39;concurrent running!&#39;</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1"># 执行10件任务，10个fiber协作</span>
+</span><span class='line'>  <span class="mi">10</span><span class="o">.</span><span class="n">times</span> <span class="k">do</span>
+</span><span class='line'>    <span class="no">Fiber</span><span class="o">.</span><span class="n">new</span> <span class="k">do</span>
+</span><span class='line'>      <span class="n">pool</span><span class="o">.</span><span class="n">execute</span> <span class="k">do</span> <span class="o">|</span><span class="n">conn</span><span class="o">|</span>
+</span><span class='line'>        <span class="n">f</span> <span class="o">=</span> <span class="no">Fiber</span><span class="o">.</span><span class="n">current</span>
+</span><span class='line'>        <span class="n">time</span> <span class="o">=</span> <span class="nb">rand</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</span><span class='line'>        <span class="c1"># 这里注册了事件后就会继续向下执行</span>
+</span><span class='line'>        <span class="c1"># 相当于模拟了一个需要执行time时间的异步任务</span>
+</span><span class='line'>        <span class="c1"># 任务的执行不会阻塞进程，而是在任务完成后的callback中才唤醒自身</span>
+</span><span class='line'>        <span class="no">EM</span><span class="o">.</span><span class="n">add_timer</span><span class="p">(</span><span class="n">time</span><span class="p">)</span> <span class="k">do</span>
+</span><span class='line'>          <span class="c1"># 在callback中恢复执行</span>
+</span><span class='line'>          <span class="n">f</span><span class="o">.</span><span class="n">resume</span><span class="p">(</span><span class="s2">&quot;mission complete in </span><span class="si">#{</span><span class="n">time</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">end</span>
+</span><span class='line'>        <span class="c1"># 立刻让出执行权</span>
+</span><span class='line'>        <span class="nb">puts</span> <span class="no">Fiber</span><span class="o">.</span><span class="n">yield</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">end</span><span class="o">.</span><span class="n">resume</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>可以执行上面的代码，通过输出可以对整个过程有更好的理解。</p>
+
+<p>这种基于fiber的连接池一定要配合eventmachine一起用才能发挥作用，其实就是em-synchrony的原理。em-synchrony将整个块放到fiber中执行，注册事件后就<code>Fiber.yield</code>让权，并在callback中唤醒。这样通过包装将callback隐藏起来了。
+节选一段em-http的实现，可以看出相同的实现模式：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">module</span> <span class="nn">EventMachine</span>
+</span><span class='line'>  <span class="k">module</span> <span class="nn">HTTPMethods</span>
+</span><span class='line'>     <span class="sx">%w[get head post delete put patch options]</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">type</span><span class="o">|</span>
+</span><span class='line'>       <span class="nb">class_eval</span> <span class="sx">%[</span>
+</span><span class='line'><span class="sx">         alias :a</span><span class="si">#{</span><span class="n">type</span><span class="si">}</span><span class="sx"> :</span><span class="si">#{</span><span class="n">type</span><span class="si">}</span><span class="sx"></span>
+</span><span class='line'><span class="sx">         def </span><span class="si">#{</span><span class="n">type</span><span class="si">}</span><span class="sx">(options = {}, &amp;blk)</span>
+</span><span class='line'><span class="sx">           f = Fiber.current</span>
+</span><span class='line'>
+</span><span class='line'><span class="sx">           conn = setup_request(:</span><span class="si">#{</span><span class="n">type</span><span class="si">}</span><span class="sx">, options, &amp;blk)</span>
+</span><span class='line'><span class="sx">           if conn.error.nil?</span>
+</span><span class='line'><span class="sx">             conn.callback { f.resume(conn) }</span>
+</span><span class='line'><span class="sx">             conn.errback  { f.resume(conn) }</span>
+</span><span class='line'>
+</span><span class='line'><span class="sx">             Fiber.yield</span>
+</span><span class='line'><span class="sx">           else</span>
+</span><span class='line'><span class="sx">             conn</span>
+</span><span class='line'><span class="sx">           end</span>
+</span><span class='line'><span class="sx">         end</span>
+</span><span class='line'><span class="sx">      ]</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>为什么事件驱动很重要？因为如果在拿到资源后同步执行，那么等待返回的过程会阻塞整个进程，也就是说fiber只能一个接一个的执行，那么就退化到了跟不用fiber一样，都是顺序执行了。</p>
+
+<p>因为使用eventmachine，或者说reactor模式。每个fiber在拿到连接后其实只需要注册一个事件，然后就把自己挂起（让出执行权），在事件完成后会执行callback，并在callback中唤醒之前的任务，并赋给它异步请求的结果。</p>
+
+<p>而没拿到连接的fiber会让出执行权，在其他fiber释放了连接后才被唤醒。因为大家都是事件驱动，不会因为IO或是等待连接而阻塞，从而让所有任务可以并发的执行。</p>
+
+<p>以上就是我的理解，欢迎指正与讨论。</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">李梓赫</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-06-23T16:54:00+08:00" pubdate data-updated="true">Jun 23<span>rd</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/reactive/'>reactive</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/02/03/use-nsoperation-nsoperationqueue-swift/" title="Previous Post: 在Swift中使用NSOperation 和NSOperationQueue">&laquo; 在Swift中使用NSOperation 和NSOperationQueue</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Hi, 我是李梓赫</h1>
+  <image class='avatar' src="http://www.gravatar.com/avatar/a844b930506d452d63483620a3fec297?s=200">
+</section>
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/loveltyoic">@loveltyoic</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'loveltyoic',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - 李梓赫 -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loveltyoic';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://loveltyoic.github.io/blog/2015/06/23/eventmachine/';
+        var disqus_url = 'http://loveltyoic.github.io/blog/2015/06/23/eventmachine/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

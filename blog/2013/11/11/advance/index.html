@@ -1,0 +1,388 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>octopress个性化定制 - Think Different</title>
+  <meta name="author" content="李梓赫">
+
+  
+  <meta name="description" content="说明：以下路径名都是相对于安装文件夹根目录。例如我的文件夹命名为myblog，则source就是指myblog/source。 OK,话不多说，快来定制我们的Octopress吧。 添加导航 1
+rake new_page['example'] 这样就生成了一个新的页面&#8217;source/ &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://loveltyoic.github.io/blog/2013/11/11/advance">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Think Different" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-45531479-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Think Different</a></h1>
+  
+    <h2>我们可以一次一次去撞南墙，但不能一个一个失去理想</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:loveltyoic.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">日志</a></li>
+  <li><a href="/blog/archives">文章归档</a></li>
+  <li><a href="/about/">关于我</a></li>
+  <li><a href="/books/">我的书单</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Octopress个性化定制</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-11-11T11:41:00+08:00" pubdate data-updated="true">Nov 11<span>th</span>, 2013</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>说明：以下路径名都是相对于安装文件夹根目录。例如我的文件夹命名为<code>myblog</code>，则<code>source</code>就是指<code>myblog/source</code>。</p>
+
+<p>OK,话不多说，快来定制我们的Octopress吧。</p>
+
+<!-- more -->
+
+
+<h3>添加导航</h3>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rake new_page['example']</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这样就生成了一个新的页面&#8217;source/example/index.markdown&#8217;。</p>
+
+<p>要怎么才能让这个页面在导航栏中显示呢？</p>
+
+<p>只需编辑&#8217;source/_includes/custom/navigation.html&#8217;。</p>
+
+<p>可以看到，初始时有两条内容，那么只需在下面继续添加即可，大概样子就是</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;ul</span> <span class="na">class=</span><span class="s">&quot;main-navigation&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;li&gt;&lt;a</span> <span class="na">href=</span><span class="s">&quot;/&quot;</span><span class="nt">&gt;</span>日志<span class="nt">&lt;/a&gt;&lt;/li&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;li&gt;&lt;a</span> <span class="na">href=</span><span class="s">&quot;/blog/archives&quot;</span><span class="nt">&gt;</span>文章归档<span class="nt">&lt;/a&gt;&lt;/li&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;li&gt;&lt;a</span> <span class="na">href=</span><span class="s">&quot;/about/&quot;</span><span class="nt">&gt;</span>关于我<span class="nt">&lt;/a&gt;&lt;/li&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;li&gt;&lt;a</span> <span class="na">href=</span><span class="s">&quot;/books/&quot;</span><span class="nt">&gt;</span>我的书单<span class="nt">&lt;/a&gt;&lt;/li&gt;</span>
+</span><span class='line'><span class="nt">&lt;/ul&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>添加侧边栏</h3>
+
+<p>侧边栏显示要看安装的主题是否支持，自带的主题是有侧边栏的。下面就来看看怎么个性化自己的侧边栏吧。
+先看<code>_config.yml</code>这个配置文件，在大约50多行的位置</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'># list each of the sidebar modules you want to include, in the order you want them to appear.
+</span><span class='line'># To add custom asides, create files in /source/_includes/custom/asides/ and add them to the list like &#39;custom/asides/custom_aside_name.html&#39;
+</span><span class='line'>default_asides: [custom/asides/about.html, asides/recent_posts.html, asides/github.html, asides/delicious.html, asides/pinboard.html, asides/googleplus.html]
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注释说的很清楚了，这里就是边栏的配置呦。把自定义的边栏加入这个<code>default_asides</code>数组中，排在前面的则相应的显示在边栏的前面喽！所以添加一个边栏就是在<code>source/_includes/custom/asides/</code>下添加一个页面。比如我的这个about边栏。</p>
+
+<p>另外Octopress已经自带了一些边栏，像最近的文章，github账户概览等等。像github等需要帐号设置，放到一会再说。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;section&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;h1&gt;</span>Hi, 我是李梓赫<span class="nt">&lt;/h1&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;image</span> <span class="na">class=</span><span class="s">&#39;avatar&#39;</span> <span class="na">src=</span><span class="s">&quot;http://www.gravatar.com/avatar/a844b930506d452d63483620a3fec297?s=200&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'><span class="nt">&lt;/section&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>很简单，只是显示名字和头像，其中头像就用<a href="http://en.gravatar.com/">gravatar</a>提供的服务。</p>
+
+<h3>定制CSS</h3>
+
+<p>如果对默认的CSS不满意怎么办？当然可以写自己的主题，但是这个工程毕竟有些大。往往现有的一些主题已经很nice了，我们需要做的只是在其基础上个性化一小部分。
+快看看<code>sass/custom/</code>这个文件夹吧。</p>
+
+<p>在<code>_style.scss</code>的开头：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>// This File is imported last, and will override other styles in the cascade
+</span><span class='line'>// Add styles here to make changes without digging in too much
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>注释真是贴心，告诉了我们这里定义的css是优先级最高的，按你的品位修改吧，let&rsquo;s make some change!</p>
+
+<h3>添加评论</h3>
+
+<p>当有人看到你的博客后想说点什么该怎么办呢，<code>web 2.0</code>讲究的就是互动啊，互联网的精神就是分享啊，没评论怎么行！
+评论这个功能如此之普遍与重要，当然有好多大神与公司为我们做好了，当然要<code>DRY</code>，幸福啊！
+Octopress里集成了<a href="http://disqus.com/">Disqus</a>，只需注册一个帐号，还有什么比这更简单呢？
+管理评论就去Disqus吧。</p>
+
+<p>帐号注册好了，怎么用呢?问得好，接下来就该说明各种帐号的配置了</p>
+
+<h3>第三方帐号配置</h3>
+
+<p>还是<code>_config.yml</code>这个文件，在后半部分，看到如此醒目的注释了么？</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'># ----------------------- #
+</span><span class='line'>#   3rd Party Settings    #
+</span><span class='line'># ----------------------- #
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>根据前面提到的，我这里就设置两个帐号做例子：github与disqus。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'># Github repositories
+</span><span class='line'>github_user: loveltyoic
+</span><span class='line'>github_repo_count: 0
+</span><span class='line'>github_show_profile_link: true
+</span><span class='line'>github_skip_forks: true
+</span><span class='line'>
+</span><span class='line'># Disqus Comments
+</span><span class='line'>disqus_short_name: loveltyoic
+</span><span class='line'>disqus_show_comment_count: true
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>找到对应的位置，填入你的帐号，done！(比注册帐号更简单的就是填写帐号了吧~)
+PS：还可以用<a href="http://www.google.com/analytics/">Google Analytics</a>来监控你的博客流量哦,只需要申请一个监控ID就搞定了。</p>
+
+<h3>写在最后</h3>
+
+<p>好了，就说这么多吧，我所提到的只是很基础的一小部分，权当抛砖引玉。
+Octopress的文件结构组织已经很清晰了，更多的定制就靠自己慢慢摸索啦。
+希望能给刚接触Octopress的同学一些帮助，至少会有&#8217;哦,不过如此，so easy&#8217;的感觉。
+另外我的博客配置的源码均可以在我的<a href="https://github.com/loveltyoic/loveltyoic.github.io">github</a>看到，欢迎在下面留下你的意见与我交流！</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">李梓赫</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-11-11T11:41:00+08:00" pubdate data-updated="true">Nov 11<span>th</span>, 2013</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/octopress/'>octopress</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/09/19/jquery-fileupload/" title="Previous Post: 在Rails4.0中使用Jquery-File-Upload上传多个文件">&laquo; 在Rails4.0中使用Jquery-File-Upload上传多个文件</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2013/11/13/grape/" title="Next Post: 使用goliath+grape构建API服务">使用goliath+grape构建API服务 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Hi, 我是李梓赫</h1>
+  <image class='avatar' src="http://www.gravatar.com/avatar/a844b930506d452d63483620a3fec297?s=200">
+</section>
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/loveltyoic">@loveltyoic</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'loveltyoic',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - 李梓赫 -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'loveltyoic';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://loveltyoic.github.io/blog/2013/11/11/advance/';
+        var disqus_url = 'http://loveltyoic.github.io/blog/2013/11/11/advance/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
