@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>在Rails4.0中使用Jquery-File-Upload上传多个文件 | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="在网站中上传图片是一个非常普遍的需求。感谢强大的[Jquery-File-Upload]，让这个功能简化了许多。需要说明，我的项目环境是Rails4.0+Mongoid+carrierwave，需求是对于一辆汽车，上传多张图片并展示出来。下面就记录一下我是如何实现的。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在Rails4.0中使用Jquery-File-Upload上传多个文件">
+<meta property="og:url" content="http://yoursite.com/2013/09/19/2013-09-19-jquery-fileupload/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="在网站中上传图片是一个非常普遍的需求。感谢强大的[Jquery-File-Upload]，让这个功能简化了许多。需要说明，我的项目环境是Rails4.0+Mongoid+carrierwave，需求是对于一辆汽车，上传多张图片并展示出来。下面就记录一下我是如何实现的。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2013-09-19T01:45:00.000Z">
+<meta property="article:modified_time" content="2020-07-02T07:12:30.185Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-2013-09-19-jquery-fileupload" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2013/09/19/2013-09-19-jquery-fileupload/" class="article-date">
+  <time datetime="2013-09-19T01:45:00.000Z" itemprop="datePublished">2013-09-19</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/rails-mongoid/">rails mongoid</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      在Rails4.0中使用Jquery-File-Upload上传多个文件
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在网站中上传图片是一个非常普遍的需求。感谢强大的[Jquery-File-Upload]，让这个功能简化了许多。<br>需要说明，我的项目环境是<code>Rails4.0+Mongoid+carrierwave</code>，需求是对于一辆汽车，上传多张图片并展示出来。<br>下面就记录一下我是如何实现的。</p>
+<a id="more"></a>
+
+<p>###Model</p>
+<figure class="highlight ruby"><figcaption><span>picture.rb</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Picture</span></span></span><br><span class="line">  <span class="keyword">include</span> Mongoid::Document</span><br><span class="line"></span><br><span class="line">  belongs_to <span class="symbol">:car</span></span><br><span class="line">  mount_uploader <span class="symbol">:image</span>, PictureUploader <span class="comment"># 挂载carrierwave</span></span><br><span class="line"></span><br><span class="line">  field <span class="symbol">:image</span>, <span class="symbol">type:</span> String</span><br><span class="line">  field <span class="symbol">:image_cache</span>, <span class="symbol">type:</span> String</span><br><span class="line">  field <span class="symbol">:car_token</span>, <span class="symbol">type:</span> String</span><br><span class="line">  </span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">output_json</span></span></span><br><span class="line">    &#123;</span><br><span class="line">      <span class="string">"name"</span> =&gt; read_attribute(<span class="symbol">:image</span>),</span><br><span class="line">      <span class="string">"size"</span> =&gt; image.size,</span><br><span class="line">      <span class="string">"url"</span> =&gt; image.url,</span><br><span class="line">      <span class="string">"delete_url"</span> =&gt; id,</span><br><span class="line">      <span class="string">"picture_id"</span> =&gt; id,</span><br><span class="line">      <span class="string">"delete_type"</span> =&gt; <span class="string">"DELETE"</span></span><br><span class="line">    &#125;.to_json</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight ruby"><figcaption><span>car.rb</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Car</span></span></span><br><span class="line">  <span class="keyword">include</span> Mongoid::Document</span><br><span class="line"></span><br><span class="line">  has_many <span class="symbol">:pictures</span>, <span class="symbol">autosave:</span> <span class="literal">true</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">generate_token</span></span></span><br><span class="line">    <span class="keyword">self</span>.token = loop <span class="keyword">do</span></span><br><span class="line">      random_token = SecureRandom.urlsafe_base64</span><br><span class="line">      <span class="keyword">break</span> random_token <span class="keyword">if</span> Car.find(<span class="symbol">token:</span> random_token).<span class="literal">nil</span>?</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>说明：一辆车可以有多张图片，因此用has_many关联。<br>那么这个<code>generate_token</code>是做什么的呢，一会在controller中就会看到用处了！<br>###Controller</p>
+<ul>
+<li>因为Rails4.0应用<code>strong parameters</code>, 因此需要在控制器中做白名单处理，不然参数会被禁止传入。<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">PicturesController</span> &lt; ApplicationController</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">destroy</span></span></span><br><span class="line">    car = Car.find(params[<span class="symbol">:car_id</span>])</span><br><span class="line">    @pic = car.pictures.find(params[<span class="symbol">:id</span>])</span><br><span class="line">    @pic.destroy</span><br><span class="line">    respond_to <span class="keyword">do</span> <span class="params">|format|</span></span><br><span class="line">      format.js</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">create</span></span></span><br><span class="line">    @picture = Picture.new(pic_params)</span><br><span class="line">    <span class="keyword">if</span> @picture.save</span><br><span class="line">      respond_to <span class="keyword">do</span> <span class="params">|format|</span></span><br><span class="line">        format.html &#123;</span><br><span class="line">          render <span class="symbol">:json</span> =&gt; @picture.output_json,</span><br><span class="line">          <span class="symbol">:content_type</span> =&gt; <span class="string">'text/html'</span>,</span><br><span class="line">          <span class="symbol">:layout</span> =&gt; <span class="literal">false</span></span><br><span class="line">        &#125;</span><br><span class="line">        format.json &#123;</span><br><span class="line">          render <span class="symbol">:json</span> =&gt; @picture.output_json</span><br><span class="line">        &#125;</span><br><span class="line">      <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      render <span class="symbol">:json</span> =&gt; [&#123;<span class="symbol">:error</span> =&gt; <span class="string">"custom_failure"</span>&#125;], <span class="symbol">:status</span> =&gt; <span class="number">304</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">pic_params</span></span></span><br><span class="line">    params.<span class="keyword">require</span>(<span class="symbol">:picture</span>).permit(<span class="symbol">:image</span>, <span class="symbol">:image_cache</span>, <span class="symbol">:car_token</span>)</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure></li>
+<li>对于CarsController,只节选关键的<code>new</code>和<code>create</code>。<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">new</span></span></span><br><span class="line">  @car = Car.new</span><br><span class="line">  @car.generate_token</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">create</span></span></span><br><span class="line">  @car = Car.new(car_params)</span><br><span class="line">  @car.pictures &lt;&lt; Picture.where(<span class="symbol">car_token:</span> @car.token)</span><br><span class="line">  @car.user_id = current_user.id</span><br><span class="line">  respond_to <span class="keyword">do</span> <span class="params">|format|</span></span><br><span class="line">    <span class="keyword">if</span> @car.save!</span><br><span class="line">      flash[<span class="symbol">:success</span>] = <span class="string">'车辆信息创建成功!'</span></span><br><span class="line">      format.html &#123; redirect_to @car &#125;</span><br><span class="line">      format.json &#123; render <span class="symbol">json:</span> @car, <span class="symbol">status:</span> <span class="symbol">:created</span>, <span class="symbol">location:</span> @car &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      format.html &#123; render <span class="symbol">action:</span> <span class="string">"new"</span> &#125;</span><br><span class="line">      format.json &#123; render <span class="symbol">json:</span> @car.errors, <span class="symbol">status:</span> <span class="symbol">:unprocessable_entity</span> &#125;</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">car_params</span></span></span><br><span class="line">  params.<span class="keyword">require</span>(<span class="symbol">:car</span>).permit(<span class="symbol">:token</span>)</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+###View表单<figure class="highlight erb"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="xml"><span class="tag">&lt;<span class="name">%=</span></span></span><span class="ruby"> simple_form_for @car, <span class="symbol">:html</span> =&gt; &#123;<span class="symbol">:multipart</span> =&gt; <span class="literal">true</span>&#125; <span class="keyword">do</span> <span class="params">|f|</span> </span><span class="xml"><span class="tag">%&gt;</span></span></span><br><span class="line"><span class="xml">    <span class="tag">&lt;<span class="name">%=</span></span></span><span class="ruby"> f.input <span class="symbol">:token</span>, <span class="symbol">as:</span> <span class="symbol">:hidden</span>, <span class="symbol">value:</span> @car.token </span><span class="xml"><span class="tag">%&gt;</span></span></span><br><span class="line"><span class="xml">    <span class="tag">&lt;<span class="name">%=</span></span></span><span class="ruby"> f.submit <span class="string">"保存"</span>, <span class="class"><span class="keyword">class</span>: '<span class="title">btn</span> <span class="title">btn</span>-<span class="title">primary</span> <span class="title">btn</span>-<span class="title">large</span>' </span></span><span class="xml"><span class="tag">%&gt;</span></span></span><br><span class="line"><span class="xml"><span class="tag">&lt;<span class="name">%</span></span></span><span class="ruby"> <span class="keyword">end</span> </span><span class="xml"><span class="tag">%&gt;</span></span></span><br><span class="line"><span class="xml"><span class="tag">&lt;<span class="name">%=</span></span></span><span class="ruby"> form_for Picture.new, <span class="symbol">:html</span> =&gt; &#123;<span class="symbol">:multipart</span> =&gt; <span class="literal">true</span>, <span class="symbol">id:</span> <span class="string">'new_picture'</span>&#125; <span class="keyword">do</span> <span class="params">|f|</span> </span><span class="xml"><span class="tag">%&gt;</span></span></span><br><span class="line"><span class="xml">  <span class="tag">&lt;<span class="name">%=</span></span></span><span class="ruby"> f.hidden_field <span class="symbol">:car_token</span>, <span class="symbol">value:</span> @car.token </span><span class="xml"><span class="tag">%&gt;</span></span></span><br><span class="line"><span class="xml">  <span class="tag">&lt;<span class="name">%=</span></span></span><span class="ruby"> f.file_field <span class="symbol">:image</span>, <span class="symbol">multiple:</span> <span class="literal">true</span>, <span class="symbol">name:</span> <span class="string">'picture[image]'</span> </span><span class="xml"><span class="tag">%&gt;</span></span></span><br><span class="line"><span class="xml"><span class="tag">&lt;<span class="name">%</span></span></span><span class="ruby"> <span class="keyword">end</span> </span><span class="xml"><span class="tag">%&gt;</span></span></span><br><span class="line"><span class="xml"><span class="tag">&lt;<span class="name">script</span>&gt;</span></span></span><br><span class="line"><span class="xml">$(function () &#123;</span></span><br><span class="line"><span class="xml">    $('#new_picture').fileupload(&#123; #调用Jquery-File-Upload</span></span><br><span class="line"><span class="xml">      dataType: 'json',</span></span><br><span class="line"><span class="xml">      progressall: function (e, data) &#123;</span></span><br><span class="line"><span class="xml">        var progress = parseInt(data.loaded / data.total * 100, 10);</span></span><br><span class="line"><span class="xml">        console.log(progress);</span></span><br><span class="line"><span class="xml">        $('#progress .progress-bar').css(</span></span><br><span class="line"><span class="xml">            'width', progress + '%'</span></span><br><span class="line"><span class="xml">        );</span></span><br><span class="line"><span class="xml">      &#125;,</span></span><br><span class="line"><span class="xml">      done: function (e, data) &#123;</span></span><br><span class="line"><span class="xml">        </span></span><br><span class="line"><span class="xml">      &#125;</span></span><br><span class="line"><span class="xml">    &#125;);</span></span><br><span class="line"><span class="xml">&#125;);</span></span><br><span class="line"><span class="xml"><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span></span><br></pre></td></tr></table></figure>
+###说明<br>从表单代码可以看出，这里是在一个页面中放了两个表单，一个是car的，另一个是picture的。</li>
+</ul>
+<p>图片用[Jquery-File-Upload]上传，实际上是调用了jquery的ajax。</p>
+<p>当一次上传多张图片时，实际上是<strong>用ajax将图片一张接一张的上传</strong>。</p>
+<p>举例来说，如果我一次上传了3张图片，那么就有3个ajax请求，每一次请求都会触发PicturesController的<code>create action</code>。</p>
+<p>此时的数据库中，就有了3个picture对象，也就是3张图片。</p>
+<p>那么，怎样才能将这3张图片与表单中的<code>@car</code>关联起来呢？</p>
+<p>一般来说，当我们上传图片时，父对象car还没有save到数据库中。</p>
+<p>因此就需要一个域将car与picture关联起来，其实就是额外构造的外键 —— car中的token。</p>
+<p>在car的<code>new action</code>中，通过generate_token构造外键。</p>
+<p>然后在异步上传图片后，在picture的<code>create action</code>中存储这个token。</p>
+<p>当用户填写表单其他部分并提交后，触发car的<code>create action</code>，此时根据token在数据库中查找对应的picture，加入到<code>car.pictures</code>队列，至此picture就和car关联起来了。</p>
+<p>###写在最后<br>被上传的问题困扰了一阵子，在看了许多教程和代码后，终于是初步完成了，感谢github上开源代码的前辈！</p>
+<p>抱歉我的这个项目并不开源，不过跟本文相关的代码也都贴出来了。<br>另外我还想弄一个乐高爱好者的网站，那个项目会是开源的。</p>
+<p>以上重点说明的都是我觉得开始没弄明白的问题，主要是model怎么设计的，controller怎么执行的，view怎么构造的。</p>
+<p>至于[Jquery-File-Upload]怎么用，我觉得主要还是看项目主页上的说明吧，我暂时也就是用了basic的功能。</p>
+<p>如果这篇文章能给任何人带来帮助，那么我会非常开心。<br>[Jquery-File-Upload]: <a href="https://github.com/blueimp/jQuery-File-Upload" target="_blank" rel="noopener">https://github.com/blueimp/jQuery-File-Upload</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2013/09/19/2013-09-19-jquery-fileupload/" data-id="ckc4gc9l5000ghtbo5v6cfddf" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2013/11/11/2013-11-11-advance/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          octopress个性化定制
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2013/09/09/2013-09-09-metaprogramming5/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Ruby元编程笔记 —— （四） 类定义</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Git/">Git</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Octopress/">Octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Rails/">Rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Swift-GCD/">Swift GCD</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/UX/">UX</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/api/">api</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/octopress/">octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails/">rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails-mongoid/">rails mongoid</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/reactive/">reactive</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/ruby/">ruby</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/06/">June 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/02/">February 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/01/">January 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/11/">November 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/05/">May 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/12/">December 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/11/">November 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/09/">September 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/07/">July 2013</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2015/06/23/2015-06-23-eventmachine/">em-synchrony 中连接池的实现原理</a>
+          </li>
+        
+          <li>
+            <a href="/2015/02/03/2015-02-03-use-nsoperation-nsoperationqueue-swift/">在Swift中使用NSOperation 和NSOperationQueue</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/29/2015-01-29-gcd-2-slash-2/">在Swift中应用Grand Central Dispatch(下）</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/28/2015-01-28-gcd-1-slash-2/">在Swift中应用Grand Central Dispatch(上）</a>
+          </li>
+        
+          <li>
+            <a href="/2014/11/21/2014-11-21-active-record-callbacks/">ActiveRecord中的Callback浅析</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

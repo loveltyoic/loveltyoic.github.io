@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>octopress个性化定制 | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="说明：以下路径名都是相对于安装文件夹根目录。例如我的文件夹命名为myblog，则source就是指myblog&#x2F;source。 OK,话不多说，快来定制我们的Octopress吧。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="octopress个性化定制">
+<meta property="og:url" content="http://yoursite.com/2013/11/11/2013-11-11-advance/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="说明：以下路径名都是相对于安装文件夹根目录。例如我的文件夹命名为myblog，则source就是指myblog&#x2F;source。 OK,话不多说，快来定制我们的Octopress吧。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2013-11-11T03:41:00.000Z">
+<meta property="article:modified_time" content="2020-07-02T07:12:30.186Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-2013-11-11-advance" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2013/11/11/2013-11-11-advance/" class="article-date">
+  <time datetime="2013-11-11T03:41:00.000Z" itemprop="datePublished">2013-11-11</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/octopress/">octopress</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      octopress个性化定制
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>说明：以下路径名都是相对于安装文件夹根目录。例如我的文件夹命名为<code>myblog</code>，则<code>source</code>就是指<code>myblog/source</code>。</p>
+<p>OK,话不多说，快来定制我们的Octopress吧。</p>
+<a id="more"></a>
+<p>###添加导航</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">rake new_page[&#39;example&#39;]</span><br></pre></td></tr></table></figure>
+<p>这样就生成了一个新的页面’source/example/index.markdown’。</p>
+<p>要怎么才能让这个页面在导航栏中显示呢？</p>
+<p>只需编辑’source/_includes/custom/navigation.html’。</p>
+<p>可以看到，初始时有两条内容，那么只需在下面继续添加即可，大概样子就是</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">ul</span> <span class="attr">class</span>=<span class="string">"main-navigation"</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">li</span>&gt;</span><span class="tag">&lt;<span class="name">a</span> <span class="attr">href</span>=<span class="string">"&#123;&#123; root_url &#125;&#125;/"</span>&gt;</span>日志<span class="tag">&lt;/<span class="name">a</span>&gt;</span><span class="tag">&lt;/<span class="name">li</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">li</span>&gt;</span><span class="tag">&lt;<span class="name">a</span> <span class="attr">href</span>=<span class="string">"&#123;&#123; root_url &#125;&#125;/blog/archives"</span>&gt;</span>文章归档<span class="tag">&lt;/<span class="name">a</span>&gt;</span><span class="tag">&lt;/<span class="name">li</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">li</span>&gt;</span><span class="tag">&lt;<span class="name">a</span> <span class="attr">href</span>=<span class="string">"&#123;&#123; root_url &#125;&#125;/about/"</span>&gt;</span>关于我<span class="tag">&lt;/<span class="name">a</span>&gt;</span><span class="tag">&lt;/<span class="name">li</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">li</span>&gt;</span><span class="tag">&lt;<span class="name">a</span> <span class="attr">href</span>=<span class="string">"&#123;&#123; root_url &#125;&#125;/books/"</span>&gt;</span>我的书单<span class="tag">&lt;/<span class="name">a</span>&gt;</span><span class="tag">&lt;/<span class="name">li</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">ul</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>###添加侧边栏<br>侧边栏显示要看安装的主题是否支持，自带的主题是有侧边栏的。下面就来看看怎么个性化自己的侧边栏吧。<br>先看<code>_config.yml</code>这个配置文件，在大约50多行的位置</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># list each of the sidebar modules you want to include, in the order you want them to appear.</span><br><span class="line"># To add custom asides, create files in &#x2F;source&#x2F;_includes&#x2F;custom&#x2F;asides&#x2F; and add them to the list like &#39;custom&#x2F;asides&#x2F;custom_aside_name.html&#39;</span><br><span class="line">default_asides: [custom&#x2F;asides&#x2F;about.html, asides&#x2F;recent_posts.html, asides&#x2F;github.html, asides&#x2F;delicious.html, asides&#x2F;pinboard.html, asides&#x2F;googleplus.html]</span><br></pre></td></tr></table></figure>
+<p>注释说的很清楚了，这里就是边栏的配置呦。把自定义的边栏加入这个<code>default_asides</code>数组中，排在前面的则相应的显示在边栏的前面喽！所以添加一个边栏就是在<code>source/_includes/custom/asides/</code>下添加一个页面。比如我的这个about边栏。</p>
+<p>另外Octopress已经自带了一些边栏，像最近的文章，github账户概览等等。像github等需要帐号设置，放到一会再说。</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">section</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">h1</span>&gt;</span>Hi, 我是李梓赫<span class="tag">&lt;/<span class="name">h1</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">image</span> <span class="attr">class</span>=<span class="string">'avatar'</span> <span class="attr">src</span>=<span class="string">"http://www.gravatar.com/avatar/a844b930506d452d63483620a3fec297?s=200"</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">section</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>很简单，只是显示名字和头像，其中头像就用<a href="http://en.gravatar.com/" target="_blank" rel="noopener">gravatar</a>提供的服务。</p>
+<p>###定制CSS<br>如果对默认的CSS不满意怎么办？当然可以写自己的主题，但是这个工程毕竟有些大。往往现有的一些主题已经很nice了，我们需要做的只是在其基础上个性化一小部分。<br>快看看<code>sass/custom/</code>这个文件夹吧。</p>
+<p>在<code>_style.scss</code>的开头：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; This File is imported last, and will override other styles in the cascade</span><br><span class="line">&#x2F;&#x2F; Add styles here to make changes without digging in too much</span><br></pre></td></tr></table></figure>
+<p>注释真是贴心，告诉了我们这里定义的css是优先级最高的，按你的品位修改吧，let’s make some change!<br>###添加评论<br>当有人看到你的博客后想说点什么该怎么办呢，<code>web 2.0</code>讲究的就是互动啊，互联网的精神就是分享啊，没评论怎么行！<br>评论这个功能如此之普遍与重要，当然有好多大神与公司为我们做好了，当然要<code>DRY</code>，幸福啊！<br>Octopress里集成了<a href="http://disqus.com/" target="_blank" rel="noopener">Disqus</a>，只需注册一个帐号，还有什么比这更简单呢？<br>管理评论就去Disqus吧。</p>
+<p>帐号注册好了，怎么用呢?问得好，接下来就该说明各种帐号的配置了</p>
+<p>###第三方帐号配置<br>还是<code>_config.yml</code>这个文件，在后半部分，看到如此醒目的注释了么？</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># ----------------------- #</span><br><span class="line">#   3rd Party Settings    #</span><br><span class="line"># ----------------------- #</span><br></pre></td></tr></table></figure>
+<p>根据前面提到的，我这里就设置两个帐号做例子：github与disqus。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># Github repositories</span><br><span class="line">github_user: loveltyoic</span><br><span class="line">github_repo_count: 0</span><br><span class="line">github_show_profile_link: true</span><br><span class="line">github_skip_forks: true</span><br><span class="line"></span><br><span class="line"># Disqus Comments</span><br><span class="line">disqus_short_name: loveltyoic</span><br><span class="line">disqus_show_comment_count: true</span><br></pre></td></tr></table></figure>
+
+<p>找到对应的位置，填入你的帐号，done！(比注册帐号更简单的就是填写帐号了吧~)<br>PS：还可以用<a href="http://www.google.com/analytics/" target="_blank" rel="noopener">Google Analytics</a>来监控你的博客流量哦,只需要申请一个监控ID就搞定了。</p>
+<p>###写在最后<br>好了，就说这么多吧，我所提到的只是很基础的一小部分，权当抛砖引玉。<br>Octopress的文件结构组织已经很清晰了，更多的定制就靠自己慢慢摸索啦。<br>希望能给刚接触Octopress的同学一些帮助，至少会有’哦,不过如此，so easy’的感觉。<br>另外我的博客配置的源码均可以在我的<a href="https://github.com/loveltyoic/loveltyoic.github.io" target="_blank" rel="noopener">github</a>看到，欢迎在下面留下你的意见与我交流！</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2013/11/11/2013-11-11-advance/" data-id="ckc4gc9l1000chtboc14bhjal" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2013/11/13/2013-11-13-grape/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          使用goliath+grape构建API服务
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2013/09/19/2013-09-19-jquery-fileupload/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">在Rails4.0中使用Jquery-File-Upload上传多个文件</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Git/">Git</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Octopress/">Octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Rails/">Rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Swift-GCD/">Swift GCD</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/UX/">UX</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/api/">api</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/octopress/">octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails/">rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails-mongoid/">rails mongoid</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/reactive/">reactive</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/ruby/">ruby</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/06/">June 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/02/">February 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/01/">January 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/11/">November 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/05/">May 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/12/">December 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/11/">November 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/09/">September 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/07/">July 2013</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2015/06/23/2015-06-23-eventmachine/">em-synchrony 中连接池的实现原理</a>
+          </li>
+        
+          <li>
+            <a href="/2015/02/03/2015-02-03-use-nsoperation-nsoperationqueue-swift/">在Swift中使用NSOperation 和NSOperationQueue</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/29/2015-01-29-gcd-2-slash-2/">在Swift中应用Grand Central Dispatch(下）</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/28/2015-01-28-gcd-1-slash-2/">在Swift中应用Grand Central Dispatch(上）</a>
+          </li>
+        
+          <li>
+            <a href="/2014/11/21/2014-11-21-active-record-callbacks/">ActiveRecord中的Callback浅析</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

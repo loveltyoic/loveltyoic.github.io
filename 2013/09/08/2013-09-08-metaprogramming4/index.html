@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Ruby元编程笔记 —— （三） 代码块 | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="块是一种控制作用域scope的强大手段，作用域指的是哪些代码可以看到哪些变量和方法。 调用一个方法时，才可以定义一个块，块会直接传递给这个方法，然后该方法可以用yield关键字回调这个块。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Ruby元编程笔记 —— （三） 代码块">
+<meta property="og:url" content="http://yoursite.com/2013/09/08/2013-09-08-metaprogramming4/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="块是一种控制作用域scope的强大手段，作用域指的是哪些代码可以看到哪些变量和方法。 调用一个方法时，才可以定义一个块，块会直接传递给这个方法，然后该方法可以用yield关键字回调这个块。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://farm3.staticflickr.com/2812/9684885545_7ffe7a3990_c.jpg">
+<meta property="article:published_time" content="2013-09-08T12:14:00.000Z">
+<meta property="article:modified_time" content="2020-07-02T07:12:30.183Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://farm3.staticflickr.com/2812/9684885545_7ffe7a3990_c.jpg">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-2013-09-08-metaprogramming4" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2013/09/08/2013-09-08-metaprogramming4/" class="article-date">
+  <time datetime="2013-09-08T12:14:00.000Z" itemprop="datePublished">2013-09-08</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/ruby/">ruby</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Ruby元编程笔记 —— （三） 代码块
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p><img src="http://farm3.staticflickr.com/2812/9684885545_7ffe7a3990_c.jpg" alt=""></p>
+<ul>
+<li>块是一种控制作用域<code>scope</code>的强大手段，作用域指的是哪些代码可以看到哪些变量和方法。</li>
+<li>调用一个方法时，才可以定义一个块，块会直接传递给这个方法，然后该方法可以用<code>yield</code>关键字回调这个块。</li>
+</ul>
+<a id="more"></a>
+<ul>
+<li><p><code>Kernel#block_given?()</code>询问当前的方法调用是否包含块。</p>
+</li>
+<li><p>局部变量、实例变量、self …都是绑定在对象上的名字，简称绑定<code>binding</code>。块既包含代码，也包含一组绑定。</p>
+</li>
+<li><p>当创建块时会获取到局部绑定，然后把快练同他自己的绑定传递给一个方法。把块称为闭包<code>closure</code>。意味着一个块可以获取局部绑定，病一直带着他们。</p>
+</li>
+<li><p>可以在块内部定义额外的绑定，但是这些绑定在块结束时就会消失。</p>
+</li>
+<li><p><code>Kernel#local_variables()</code>方法跟踪绑定的名字。</p>
+</li>
+<li><p>只要程序切换了作用域，一些绑定就会被全新的绑定所取代。不过，同一对象的实例变量始终存在于作用域中。</p>
+</li>
+<li><p>作用域门：</p>
+<ul>
+<li>class 类定义 </li>
+<li>module 模块定义  </li>
+<li>def 方法<br>每个关键字充当一个作用域门，关闭前一个作用域，同时打开一个新的作用域。</li>
+</ul>
+</li>
+<li><p>在<code>main</code>对象扮演<code>self</code>的角色时，可以访问一个顶级实例变量。</p>
+</li>
+<li><p>类和模块中定义的代码会被立即执行，方法中的代码只有被调用时才执行。</p>
+</li>
+<li><p>用<code>Class.new()</code>代替<code>class</code></p>
+<p><code>Module#define_method()</code>代替<code>def</code></p>
+<p>可以让一个作用域看到另一个作用域中的变量。如果两个作用域被挤压在一起，他们就可以共享各自的变量，称之为一个扁平作用域<code>Flat Scope</code>。</p>
+</li>
+<li><p>假定想在一组方法之间共享一个变量，但是又不希望其他方法访问这个变量，就可以把这些方法定义在那个变量所在的扁平作用域中，称为共享作用域。</p>
+</li>
+<li><p>如果要让绑定穿越作用域门，那么可以用方法调用来代替作用域门：用一个闭包获取当前的绑定，并把这个闭包传递给方法。</p>
+</li>
+<li><p>把传递给<code>instance_eval()</code>的块称为一个上下文探针<code>Context Probe</code>，它在对象的上下文中执行。</p>
+</li>
+<li><p>创建一个对象，仅仅是为了在其中执行块，这样的对象称为洁净室<code>Clean Room</code></p>
+</li>
+<li><p>一个<code>Proc</code>就是一个转换成对象的块，通过把块传给<code>Proc.new</code>来创建一个<code>Proc</code>，并用<code>Proc#call()</code>方法来执行这个由块转换来的对象。这种技术称为延迟执行<code>Deferred Evaluation</code>。</p>
+</li>
+<li><p><code>lambda() 和 proc() 是 Kernel方法</code>，用于把块转化为<code>Proc</code>。</p>
+</li>
+<li><p>块像是方法的额外的匿名参数。在方法中通过<code>yield</code>运行一个块，但不能：</p>
+<ul>
+<li>把这个块传递给另外一个方法</li>
+<li>把这个块转换为一个<code>Proc</code></li>
+</ul>
+</li>
+<li><p>将块附加到一个绑定上，可以给这个方法添加一个特殊的参数，这个参数必须是参数列表中的最后一个，且以<code>&amp;</code>符号开头，<code>&amp;</code>操作符的真正含义：这是一个<code>Proc</code>对象，我想把它当成一个块来使用。使用<code>&amp;</code>把<code>Proc</code>转换为块。</p>
+</li>
+<li><p>使用<code>lambda()</code>创建的<code>Proc</code>称为<code>lambda</code></p>
+</li>
+<li><p>在<code>lambda</code>中，<code>return</code>表示从这个<code>lambda</code>中返回；在<code>proc</code>中，<code>return</code>表示从定义<code>proc</code>的作用域中返回。</p>
+</li>
+<li><p>如果调用<code>lambda</code>时的参数数量不对，会抛出<code>ArgumentError</code>异常。</p>
+</li>
+<li><p>简洁<code>lambda</code></p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">-&gt; (x) &#123; x+<span class="number">1</span> &#125;</span><br><span class="line"><span class="comment">#等同于</span></span><br><span class="line">lambda &#123; <span class="params">|x|</span> x+<span class="number">1</span> &#125;</span><br></pre></td></tr></table></figure></li>
+<li><p>调用<code>Object#method()</code>方法可以获得一个用<code>Method</code>对象表示的方法，可以用<code>Method#call</code>对它进行调用。</p>
+</li>
+<li><p><code>lambda</code>在定义它的作用域中执行（他是一个闭包），而<code>Method</code>对象会在自身所在对象的作用域中执行。</p>
+</li>
+<li><p><code>Method#unbind()</code>把方法和绑定的对象分离，<code>Method#bind()</code>可以把这个<code>UnboundMethod</code>再次绑定到同属一个类的另一个对象上。</p>
+</li>
+<li><p>可以调用<code>Method#to_proc()</code>方法把<code>Method</code>对象转换为<code>Proc</code>对象，也可以用<code>define_method()</code>方法把块转换为<code>Method</code>。</p>
+</li>
+<li><p>可调用对象是可以执行的代码片段，他们有自己的作用域，有如下几种形式的可调用对象：</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">块        -<span class="params">|</span></span><br><span class="line"><span class="params">proc       |</span>--&gt;  <span class="comment">#定义自身的作用域中执行</span></span><br><span class="line">lambda    -<span class="params">| </span></span><br><span class="line"><span class="params">方法              #在所绑定对象的作用域中执行</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>DSL(Domain-Specific Language)领域专属语言.</p>
+</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2013/09/08/2013-09-08-metaprogramming4/" data-id="ckc4gc9kz0009htbo1z5k740d" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2013/09/09/2013-09-09-metaprogramming5/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Ruby元编程笔记 —— （四） 类定义
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2013/09/03/2013-09-03-metaprogramming3/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Ruby元编程笔记 —— （二） 方法</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Git/">Git</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Octopress/">Octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Rails/">Rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Swift-GCD/">Swift GCD</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/UX/">UX</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/api/">api</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/octopress/">octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails/">rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails-mongoid/">rails mongoid</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/reactive/">reactive</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/ruby/">ruby</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/06/">June 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/02/">February 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/01/">January 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/11/">November 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/05/">May 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/12/">December 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/11/">November 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/09/">September 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/07/">July 2013</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2015/06/23/2015-06-23-eventmachine/">em-synchrony 中连接池的实现原理</a>
+          </li>
+        
+          <li>
+            <a href="/2015/02/03/2015-02-03-use-nsoperation-nsoperationqueue-swift/">在Swift中使用NSOperation 和NSOperationQueue</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/29/2015-01-29-gcd-2-slash-2/">在Swift中应用Grand Central Dispatch(下）</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/28/2015-01-28-gcd-1-slash-2/">在Swift中应用Grand Central Dispatch(上）</a>
+          </li>
+        
+          <li>
+            <a href="/2014/11/21/2014-11-21-active-record-callbacks/">ActiveRecord中的Callback浅析</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

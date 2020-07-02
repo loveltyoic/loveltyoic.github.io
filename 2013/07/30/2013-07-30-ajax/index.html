@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>在Rails中使用JQuery+Ajax | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="一直感觉对Rails中如何使用Ajax感觉很迷糊，今天特地做了一些实验，总算弄清楚一些，赶快记下来。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在Rails中使用JQuery+Ajax">
+<meta property="og:url" content="http://yoursite.com/2013/07/30/2013-07-30-ajax/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="一直感觉对Rails中如何使用Ajax感觉很迷糊，今天特地做了一些实验，总算弄清楚一些，赶快记下来。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://farm3.staticflickr.com/2866/9653990063_9ba4fed207_c.jpg">
+<meta property="article:published_time" content="2013-07-30T07:04:00.000Z">
+<meta property="article:modified_time" content="2020-07-02T07:12:30.179Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://farm3.staticflickr.com/2866/9653990063_9ba4fed207_c.jpg">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-2013-07-30-ajax" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2013/07/30/2013-07-30-ajax/" class="article-date">
+  <time datetime="2013-07-30T07:04:00.000Z" itemprop="datePublished">2013-07-30</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/rails/">rails</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      在Rails中使用JQuery+Ajax
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p><img src="http://farm3.staticflickr.com/2866/9653990063_9ba4fed207_c.jpg" alt="alt text"></p>
+<p>一直感觉对Rails中如何使用Ajax感觉很迷糊，今天特地做了一些实验，总算弄清楚一些，赶快记下来。</p>
+<a id="more"></a>
+<p>首先建立了一个<code>controller test_pages</code>,代码如下</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TestPagesController</span> &lt; ApplicationController</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">test_page</span></span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">test_format</span></span></span><br><span class="line">    respond_to <span class="keyword">do</span> <span class="params">|format|</span></span><br><span class="line">      format.js</span><br><span class="line">      format.json &#123; render <span class="symbol">json:</span> &#123;</span><br><span class="line">        <span class="symbol">text:</span> <span class="string">'respond_to json!'</span>,</span><br><span class="line">        <span class="symbol">name:</span> <span class="string">'lzh'</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>然后在<code>test_page.html.erb</code>中建立几个<code>ajax</code>的链接和按钮，观察他们的表现。<br>代码如下:</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">script</span> <span class="attr">type</span>=<span class="string">"text/javascript"</span>&gt;</span></span><br><span class="line"><span class="javascript">  $(<span class="built_in">document</span>).ready( <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span></span><br><span class="line"></span><br><span class="line"><span class="javascript">    $(<span class="string">"#js1"</span>).click( <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span></span><br><span class="line"><span class="javascript">      $.getScript(<span class="string">"/test_format"</span>);</span></span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line"><span class="javascript">    $(<span class="string">"#js2"</span>).click( <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span></span><br><span class="line"><span class="javascript">      $.ajax(&#123;</span></span><br><span class="line"><span class="actionscript">        dataType: <span class="string">"script"</span>,</span></span><br><span class="line"><span class="actionscript">        url: <span class="string">"/test_format"</span></span></span><br><span class="line">      &#125;);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line"><span class="javascript">    $(<span class="string">"#json1"</span>).bind(</span></span><br><span class="line"><span class="actionscript">      <span class="string">"ajax:success"</span>, <span class="function"><span class="keyword">function</span><span class="params">(event,json)</span></span>&#123; alert(json.text); &#125;</span></span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line"><span class="javascript">    $(<span class="string">"#json2"</span>).click( <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span></span><br><span class="line"><span class="javascript">      $.ajax(&#123;</span></span><br><span class="line"><span class="actionscript">        dataType: <span class="string">"json"</span>,</span></span><br><span class="line"><span class="actionscript">        url: <span class="string">"/test_format"</span>,</span></span><br><span class="line"><span class="actionscript">        success: <span class="function"><span class="keyword">function</span><span class="params">(json)</span></span>&#123;</span></span><br><span class="line">          alert(json.text);</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line"><span class="javascript">    $(<span class="string">"#json3"</span>).click( <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span></span><br><span class="line"><span class="javascript">      $.getJSON(<span class="string">"/test_format"</span>,<span class="function"><span class="keyword">function</span>(<span class="params">json</span>)</span>&#123; alert(json.text);&#125;);</span></span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;);</span><br><span class="line"><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">%=</span> <span class="attr">link_to</span> '<span class="attr">js3</span>', <span class="attr">test_format_path</span>, <span class="attr">:remote</span> =&gt;</span> true, "data-type" =&gt; 'script' %&gt;</span><br><span class="line"><span class="tag">&lt;<span class="name">%=</span> <span class="attr">link_to</span> '<span class="attr">json1</span>', <span class="attr">test_format_path</span>, <span class="attr">id:</span> "<span class="attr">json1</span>", <span class="attr">:remote</span> =&gt;</span> true, "data-type" =&gt; 'json' %&gt;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="tag">&lt;<span class="name">button</span> <span class="attr">id</span>=<span class="string">"js1"</span>&gt;</span>js1<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">button</span> <span class="attr">id</span>=<span class="string">"js2"</span>&gt;</span>js2<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">button</span> <span class="attr">id</span>=<span class="string">"json2"</span>&gt;</span>json2<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">button</span> <span class="attr">id</span>=<span class="string">"json3"</span>&gt;</span>json3<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="tag">&lt;<span class="name">div</span> <span class="attr">id</span>=<span class="string">"will_change"</span>&gt;</span><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>为了实现<code>ajax</code>，主要用两种方法，一种是<code>jQuery</code>方法，另一种是<code>helper</code>方法.</p>
+<p>以上代码中的<code>#js1,#js2,#js3</code>的行为都是相同的，<br><code>#json1,#json2,#json3</code>也是相同的。<br>##jQuery方法<br>对页面上的元素添加<code>ajax</code>事件，然后在事件触发后执行<code>ajax</code>请求。<br>JQuery提供了几种方法，有<strong>$.ajax,$.getScript,$.getJSON,$.load,$.post,$.get</strong></p>
+<p>其中</p>
+<ul>
+<li>请求<code>js</code>脚本，用<code>$.getScript</code></li>
+<li>请求<code>json</code>数据，用<code>$.getJSON</code></li>
+<li>而<code>$.ajax</code>是最一般化的方法，可以指定所有选项。</li>
+</ul>
+<p>更详细的说明可以参考《JavaScript权威指南》的JQuery章节。<br>##helper方法<br>通过<code>link_to</code>或<code>button_to</code>创建按钮或链接，只需加入<code>:remote =&gt; true</code>,并且用<code>&quot;data-type&quot; =&gt; &#39;json&#39;或者&#39;script&#39;</code>来指明请求的数据格式。</p>
+<p>如果使用这种方法，因为无法在<code>helper</code>中直接指定回调函数，因此对于<code>json</code>数据，没法直接用，怎么办?<br>答案就是在页面的脚本中为其绑定一个<code>ajax</code>事件监听函数！<br>就像</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$(<span class="string">"#json1"</span>).bind(</span><br><span class="line">  <span class="string">"ajax:success"</span>, <span class="function"><span class="keyword">function</span>(<span class="params">event,json</span>)</span>&#123; alert(json.text); &#125;</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+<p>这样，在<code>ajax</code>成功返回后，可以通过一个函数来使用返回的<code>json</code>数据。</p>
+<p><strong>这个绑定的<code>function</code>的参数是有规定的</strong>:</p>
+<p>第一个参数代表这个事件对象，而第二个参数就是返回的<code>json</code>数据。<br>##请求格式<br>注意到，所有这些请求的<code>url</code>都是相同的<code>/test_format</code>，那么如何根据请求返回相应格式呢，<code>Rails</code>已经帮我们解决了！<br>在<code>test_format</code>这个action中，通过<code>respond_to do |format|</code>来根据请求返回对应格式的响应。<br>而这个请求格式，就是我们在view页面中通过<code>$.ajax</code>中的<code>dataType</code>或是<code>helper</code>方法中的<code>&quot;data-type&quot;</code>来指定的了。<br>比如，当<code>&quot;data-type&quot; =&gt; &#39;script&#39;或是dataType: &#39;script&#39;</code>时，对应于<code>format.js</code>。</p>
+<p>服务器端会查找<code>format.js.erb</code>,编译后返回<code>format.js</code>这个脚本给客户端。<br><code>format.js.erb</code>的代码如下</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">alert(<span class="string">'respond_to js!'</span>);</span><br><span class="line"></span><br><span class="line">$(<span class="string">"#will_change"</span>).html(<span class="string">"js has been load"</span>);</span><br></pre></td></tr></table></figure>
+<p>返回的js脚本会立即执行，可以触发动作或是改变页面的元素。<br>而json数据就是在回调的<code>function</code>中使用了。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2013/07/30/2013-07-30-ajax/" data-id="ckc4gc9ku0004htbo0uxe4ruo" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2013/09/03/2013-09-03-metaprogramming1/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Ruby元编程笔记 —— （零） 引言
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2013/07/26/2013-07-26-git/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">SSH与Git远端仓库</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Git/">Git</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Octopress/">Octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Rails/">Rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Swift-GCD/">Swift GCD</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/UX/">UX</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/api/">api</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/octopress/">octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails/">rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails-mongoid/">rails mongoid</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/reactive/">reactive</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/ruby/">ruby</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/06/">June 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/02/">February 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/01/">January 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/11/">November 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/05/">May 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/12/">December 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/11/">November 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/09/">September 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/07/">July 2013</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2015/06/23/2015-06-23-eventmachine/">em-synchrony 中连接池的实现原理</a>
+          </li>
+        
+          <li>
+            <a href="/2015/02/03/2015-02-03-use-nsoperation-nsoperationqueue-swift/">在Swift中使用NSOperation 和NSOperationQueue</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/29/2015-01-29-gcd-2-slash-2/">在Swift中应用Grand Central Dispatch(下）</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/28/2015-01-28-gcd-1-slash-2/">在Swift中应用Grand Central Dispatch(上）</a>
+          </li>
+        
+          <li>
+            <a href="/2014/11/21/2014-11-21-active-record-callbacks/">ActiveRecord中的Callback浅析</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

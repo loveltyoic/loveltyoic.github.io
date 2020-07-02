@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>em-synchrony 中连接池的实现原理 | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="通过读em-synchrony的代码，发现其中连接池的实现是一个很好的例子，下面就通过模仿em-synchrony线程池的实现来说明我所理解的使用模式。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="em-synchrony 中连接池的实现原理">
+<meta property="og:url" content="http://yoursite.com/2015/06/23/2015-06-23-eventmachine/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="通过读em-synchrony的代码，发现其中连接池的实现是一个很好的例子，下面就通过模仿em-synchrony线程池的实现来说明我所理解的使用模式。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2015-06-23T08:54:00.000Z">
+<meta property="article:modified_time" content="2020-07-02T07:12:30.195Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-2015-06-23-eventmachine" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2015/06/23/2015-06-23-eventmachine/" class="article-date">
+  <time datetime="2015-06-23T08:54:00.000Z" itemprop="datePublished">2015-06-23</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/reactive/">reactive</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      em-synchrony 中连接池的实现原理
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>通过读em-synchrony的代码，发现其中连接池的实现是一个很好的例子，下面就通过模仿em-synchrony线程池的实现来说明我所理解的使用模式。</p>
+<a id="more"></a>
+
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">require</span> <span class="string">'fiber'</span></span><br><span class="line"><span class="keyword">require</span> <span class="string">'eventmachine'</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Connection</span></span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Pool</span></span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(size)</span></span></span><br><span class="line">    <span class="comment"># 构造连接的数组，这里用虚构的Connection代替，可以抽象的理解为各种资源，如mysql连接，redis连接...</span></span><br><span class="line">    @connections = size.times.map &#123; Connection.new &#125;</span><br><span class="line">    <span class="comment"># 等待队列，存放等待资源的fiber</span></span><br><span class="line">    @pending = []</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">execute</span></span></span><br><span class="line">    <span class="comment"># 获取资源，当没有空闲资源的时候，会让出执行，而不会阻塞进程</span></span><br><span class="line">    conn = acquire</span><br><span class="line">    <span class="comment"># 只有在拿到资源后才会执行到这里</span></span><br><span class="line">    <span class="string">'get conn, do job'</span></span><br><span class="line">    <span class="comment"># 传过来的block应该是一个异步的任务</span></span><br><span class="line">    <span class="keyword">yield</span> conn <span class="keyword">if</span> block_given?</span><br><span class="line">    release(conn)</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">acquire</span></span></span><br><span class="line">    f = Fiber.current</span><br><span class="line">    <span class="comment"># 试图去连接池中拿</span></span><br><span class="line">    c = @connections.pop</span><br><span class="line">    <span class="comment"># 拿到了就直接返回</span></span><br><span class="line">    <span class="keyword">return</span> c <span class="keyword">if</span> c</span><br><span class="line">    <span class="comment"># 如果没拿到，就需要等待</span></span><br><span class="line">    puts <span class="string">'waiting for connection'</span></span><br><span class="line">    <span class="comment"># 但是这里的等待并不是阻塞等待的，因为有了fiber，我们可以在这里让出执行权</span></span><br><span class="line">    <span class="comment"># 只要将当前的fiber加入到等待队列中</span></span><br><span class="line">    Fiber.<span class="keyword">yield</span> @pending.push f</span><br><span class="line">    <span class="comment"># 当fiber被唤醒时，会在这里继续执行，再次尝试acquire</span></span><br><span class="line">    acquire</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">release</span><span class="params">(conn)</span></span></span><br><span class="line">    <span class="comment"># 把连接放回连接池</span></span><br><span class="line">    @connections.push conn</span><br><span class="line">    <span class="comment"># 当资源被释放时，会从等待队列中唤醒一个fiber</span></span><br><span class="line">    p = @pending.shift <span class="keyword">and</span> p.resume</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p><em>怎么用？</em></p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">EM.run <span class="keyword">do</span> </span><br><span class="line">  <span class="comment"># 容量为3的资源池</span></span><br><span class="line">  pool = Pool.new(<span class="number">3</span>)</span><br><span class="line"></span><br><span class="line">  <span class="comment"># 其他事件</span></span><br><span class="line">  EM.add_periodic_timer(<span class="number">2</span>) &#123; puts <span class="string">'concurrent running!'</span> &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment"># 执行10件任务，10个fiber协作</span></span><br><span class="line">  <span class="number">10</span>.times <span class="keyword">do</span></span><br><span class="line">    Fiber.new <span class="keyword">do</span></span><br><span class="line">      pool.execute <span class="keyword">do</span> <span class="params">|conn|</span></span><br><span class="line">        f = Fiber.current</span><br><span class="line">        time = rand(<span class="number">10</span>)</span><br><span class="line">        <span class="comment"># 这里注册了事件后就会继续向下执行</span></span><br><span class="line">        <span class="comment"># 相当于模拟了一个需要执行time时间的异步任务</span></span><br><span class="line">        <span class="comment"># 任务的执行不会阻塞进程，而是在任务完成后的callback中才唤醒自身</span></span><br><span class="line">        EM.add_timer(time) <span class="keyword">do</span> </span><br><span class="line">          <span class="comment"># 在callback中恢复执行</span></span><br><span class="line">          f.resume(<span class="string">"mission complete in <span class="subst">#&#123;time&#125;</span>"</span>)</span><br><span class="line">        <span class="keyword">end</span></span><br><span class="line">        <span class="comment"># 立刻让出执行权</span></span><br><span class="line">        puts Fiber.<span class="keyword">yield</span></span><br><span class="line">      <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span>.resume</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>可以执行上面的代码，通过输出可以对整个过程有更好的理解。</p>
+<p>这种基于fiber的连接池一定要配合eventmachine一起用才能发挥作用，其实就是em-synchrony的原理。em-synchrony将整个块放到fiber中执行，注册事件后就<code>Fiber.yield</code>让权，并在callback中唤醒。这样通过包装将callback隐藏起来了。<br>节选一段em-http的实现，可以看出相同的实现模式：</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">module</span> <span class="title">EventMachine</span></span></span><br><span class="line">  <span class="class"><span class="keyword">module</span> <span class="title">HTTPMethods</span></span></span><br><span class="line">     <span class="string">%w[get head post delete put patch options]</span>.each <span class="keyword">do</span> <span class="params">|type|</span></span><br><span class="line">       class_eval <span class="string">%[</span></span><br><span class="line"><span class="string">         alias :a<span class="subst">#&#123;type&#125;</span> :<span class="subst">#&#123;type&#125;</span></span></span><br><span class="line"><span class="string">         def <span class="subst">#&#123;type&#125;</span>(options = &#123;&#125;, &amp;blk)</span></span><br><span class="line"><span class="string">           f = Fiber.current</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">           conn = setup_request(:<span class="subst">#&#123;type&#125;</span>, options, &amp;blk)</span></span><br><span class="line"><span class="string">           if conn.error.nil?</span></span><br><span class="line"><span class="string">             conn.callback &#123; f.resume(conn) &#125;</span></span><br><span class="line"><span class="string">             conn.errback  &#123; f.resume(conn) &#125;</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">             Fiber.yield</span></span><br><span class="line"><span class="string">           else</span></span><br><span class="line"><span class="string">             conn</span></span><br><span class="line"><span class="string">           end</span></span><br><span class="line"><span class="string">         end</span></span><br><span class="line"><span class="string">      ]</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>为什么事件驱动很重要？因为如果在拿到资源后同步执行，那么等待返回的过程会阻塞整个进程，也就是说fiber只能一个接一个的执行，那么就退化到了跟不用fiber一样，都是顺序执行了。</p>
+<p>因为使用eventmachine，或者说reactor模式。每个fiber在拿到连接后其实只需要注册一个事件，然后就把自己挂起（让出执行权），在事件完成后会执行callback，并在callback中唤醒之前的任务，并赋给它异步请求的结果。</p>
+<p>而没拿到连接的fiber会让出执行权，在其他fiber释放了连接后才被唤醒。因为大家都是事件驱动，不会因为IO或是等待连接而阻塞，从而让所有任务可以并发的执行。</p>
+<p>以上就是我的理解，欢迎指正与讨论。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2015/06/23/2015-06-23-eventmachine/" data-id="ckc4gc9lb000ohtbo8xf7666k" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2015/02/03/2015-02-03-use-nsoperation-nsoperationqueue-swift/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">在Swift中使用NSOperation 和NSOperationQueue</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Git/">Git</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Octopress/">Octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Rails/">Rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Swift-GCD/">Swift GCD</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/UX/">UX</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/api/">api</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/octopress/">octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails/">rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails-mongoid/">rails mongoid</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/reactive/">reactive</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/ruby/">ruby</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/06/">June 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/02/">February 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/01/">January 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/11/">November 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/05/">May 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/12/">December 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/11/">November 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/09/">September 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/07/">July 2013</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2015/06/23/2015-06-23-eventmachine/">em-synchrony 中连接池的实现原理</a>
+          </li>
+        
+          <li>
+            <a href="/2015/02/03/2015-02-03-use-nsoperation-nsoperationqueue-swift/">在Swift中使用NSOperation 和NSOperationQueue</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/29/2015-01-29-gcd-2-slash-2/">在Swift中应用Grand Central Dispatch(下）</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/28/2015-01-28-gcd-1-slash-2/">在Swift中应用Grand Central Dispatch(上）</a>
+          </li>
+        
+          <li>
+            <a href="/2014/11/21/2014-11-21-active-record-callbacks/">ActiveRecord中的Callback浅析</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

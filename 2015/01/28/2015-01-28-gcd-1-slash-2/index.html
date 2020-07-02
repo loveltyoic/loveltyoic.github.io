@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>在Swift中应用Grand Central Dispatch(上） | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="本文译自Grand Central Dispatch Tutorial for Swift: Part 1&#x2F;2  尽管 Grand Central Dispatch (GCD)已经存在一段时间了，但并非每个人都知道怎么使用它。这是情有可原的，因为并发很棘手，而且GCD本身基于C的API在Swift世界中很刺眼。在这两篇教程中，你会学到GCD的来龙去脉。第一部分解释了GCD可以做什么和几个基本功能">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在Swift中应用Grand Central Dispatch(上）">
+<meta property="og:url" content="http://yoursite.com/2015/01/28/2015-01-28-gcd-1-slash-2/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文译自Grand Central Dispatch Tutorial for Swift: Part 1&#x2F;2  尽管 Grand Central Dispatch (GCD)已经存在一段时间了，但并非每个人都知道怎么使用它。这是情有可原的，因为并发很棘手，而且GCD本身基于C的API在Swift世界中很刺眼。在这两篇教程中，你会学到GCD的来龙去脉。第一部分解释了GCD可以做什么和几个基本功能">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://cdn1.raywenderlich.com/wp-content/uploads/2014/01/Concurrency_vs_Parallelism.png">
+<meta property="og:image" content="http://cdn2.raywenderlich.com/wp-content/uploads/2014/09/Serial-Queue-Swift.png">
+<meta property="og:image" content="http://cdn2.raywenderlich.com/wp-content/uploads/2014/09/Concurrent-Queue-Swift.png">
+<meta property="og:image" content="http://cdn3.raywenderlich.com/wp-content/uploads/2014/01/Workflow1.png">
+<meta property="og:image" content="http://cdn4.raywenderlich.com/wp-content/uploads/2014/09/Dispatch-Barrier-Swift.png">
+<meta property="og:image" content="http://cdn4.raywenderlich.com/wp-content/uploads/2014/08/dispatch_sync_in_action_swift.gif">
+<meta property="og:image" content="http://cdn4.raywenderlich.com/wp-content/uploads/2014/08/dispatch_async_in_action_swift.gif">
+<meta property="article:published_time" content="2015-01-28T06:02:00.000Z">
+<meta property="article:modified_time" content="2020-07-02T07:12:30.191Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://cdn1.raywenderlich.com/wp-content/uploads/2014/01/Concurrency_vs_Parallelism.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-2015-01-28-gcd-1-slash-2" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2015/01/28/2015-01-28-gcd-1-slash-2/" class="article-date">
+  <time datetime="2015-01-28T06:02:00.000Z" itemprop="datePublished">2015-01-28</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Swift-GCD/">Swift GCD</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      在Swift中应用Grand Central Dispatch(上）
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文译自<a href="http://www.raywenderlich.com/79149/grand-central-dispatch-tutorial-swift-part-1" target="_blank" rel="noopener">Grand Central Dispatch Tutorial for Swift: Part 1/2</a></p>
+</blockquote>
+<p>尽管 <strong>Grand Central Dispatch</strong> (GCD)已经存在一段时间了，但并非每个人都知道怎么使用它。这是情有可原的，因为并发很棘手，而且GCD本身基于C的API在Swift世界中很刺眼。<br>在这两篇教程中，你会学到GCD的来龙去脉。第一部分解释了GCD可以做什么和几个基本功能。第二部分，你会学到一些GCD所提供的进阶功能。</p>
+<a id="more"></a>
+
+<h2 id="起步"><a href="#起步" class="headerlink" title="起步"></a>起步</h2><p><em>libdispatch</em>是Apple所提供的在IOS和OS X上进行并发编程的库，而GCD正是它市场化的名字。GCD有如下优点：</p>
+<ul>
+<li>GCD可以将计算复杂的任务放到后台执行，从而提升app的响应性能</li>
+<li>GCD提供了比锁和线程更简单的并发模型，帮助开发者避免并发的bug。</li>
+</ul>
+<p>为了理解GCD，你需要了解一些线程和并发的概念。这些概念可能很含糊并且细微，所以先简要回顾一下。</p>
+<h3 id="串行-vs-并发"><a href="#串行-vs-并发" class="headerlink" title="串行 vs. 并发"></a>串行 vs. 并发</h3><p>这两个词用来描述任务的执行顺序。 <strong>串行</strong> 在同一时间点总是单独执行一个任务，而并发可以同时执行多个任务。</p>
+<h3 id="任务"><a href="#任务" class="headerlink" title="任务"></a>任务</h3><p>在本教程中，你可以把任务当做一个闭包(closure)。实际上，你可以将GCD和函数指针一起使用，但是一般很少这样使用。闭包更简单！</p>
+<p>不记得Swift中的闭包？闭包是自含的，可保存传递并被调用的代码块。当调用的时候，他们的用法很像函数，可以有参数和返回值。除此之外，闭包可以“捕获”外部的变量，也就是说，它可以看到并记住它自身被定义时的作用域变量。</p>
+<p>Swift中的闭包和OC中的块(block)类似甚至于他们几乎就是可交换使用的。唯一的限制在于OC中不能使用Swift独有的特性，比如元组(tuple)。但OC中的块可以安全的替换成Swift中的闭包。</p>
+<h3 id="同步-vs-异步"><a href="#同步-vs-异步" class="headerlink" title="同步 vs. 异步"></a>同步 vs. 异步</h3><p>这两个词描述的是函数何时将控制权返回给调用者，以及在返回时任务的完成情况。</p>
+<p><em>同步</em>函数只有在任务完成后才会返回。</p>
+<p><em>异步</em>函数会立即返回，不会等待任务完成。因此异步函数不会阻塞当前线程。</p>
+<p> <strong>注意</strong>   – 当你读到同步函数阻塞(block)当前进程或者函数是阻塞(blocking)函数时，不要困惑！动词阻塞（block）描述的是函数对当前线程的影响，和块(block)没有关系。同时记住GCD文档中有关OC的block可以跟Swift的闭包互换。</p>
+<h3 id="临界区（Critical-Section）"><a href="#临界区（Critical-Section）" class="headerlink" title="临界区（Critical Section）"></a>临界区（Critical Section）</h3><p>这是一段不能并发执行的代码，也就是说两个线程不可以同时执行它。这通常是因为这段代码会修改共享的资源。否则，并发的进程同时修改同一个变量会导致错误。</p>
+<h3 id="竞态条件"><a href="#竞态条件" class="headerlink" title="竞态条件"></a>竞态条件</h3><p>当两个线程竞争同一资源时，如果对资源的访问顺序敏感，就称存在竞态条件。竞态条件可能产生在代码检查时不易被发现的不可预期行为。</p>
+<h3 id="死锁"><a href="#死锁" class="headerlink" title="死锁"></a>死锁</h3><p>两个或更多的线程因等待彼此完成而陷入的困境称为死锁。第一个线程无法完成因为它在等待第二个线程完成。但是第二个线程也无法完成因为它在等待第一个线程完成。</p>
+<h3 id="线程安全"><a href="#线程安全" class="headerlink" title="线程安全"></a>线程安全</h3><p>线程安全的代码是可以被多个线程或并发任务安全调用的，他不会造成任何问题（数据错误，崩溃等）。非线程安全的代码在同一时间只能单独执行。一段线程安全的代码如<code>let a = [&quot;thread-safe&quot;]</code>。由于数组是只读的，它可以被多个线程同时使用而不会引发问题。另一方面，<code>var a = [&quot;thread-unsafe&quot;]</code>是可变数组。这意味着它不是线程安全的，因为多个线程可以同时获取并修改这个数组，会得到不可预料的结果。非线程安全的变量和可变的数据结构在同一时刻应该只能被一个线程获取。</p>
+<h3 id="上下文切换"><a href="#上下文切换" class="headerlink" title="上下文切换"></a>上下文切换</h3><p>上下文切换是在进程中切换不同线程时保存和恢复程序执行状态的过程。这一过程在编写多任务app时相当常见，但是会造成一些额外开支。</p>
+<h3 id="并发-vs-并行"><a href="#并发-vs-并行" class="headerlink" title="并发 vs 并行"></a>并发 vs 并行</h3><p>并发和并行经常会被同时提起，所以值得通过简短的解释来区分彼此。</p>
+<p>并发代码中的单独部分可以同时执行。然而，这要由系统来决定并发怎样发生或是否发生。</p>
+<p>多核设备通过并行来同时执行多个线程；然而，在单核设备中，必须要通过上下文切换来运行另一个线程或进程。这一过程通常发生的很快以至于给人并行的假象。如下图所示<br><img src="http://cdn1.raywenderlich.com/wp-content/uploads/2014/01/Concurrency_vs_Parallelism.png" alt=""></p>
+<p>尽管你可能在GCD之下编写并发执行的代码，但仍由GCD来决定并行的需求有多大。</p>
+<p>深层次的观点是并发实际上是关乎<em>结构</em>的。当你编写GCD代码时，你组织你的代码来揭示出可以同时运行的工作，以及不可以同时运行的。如果你想深入了解这个主题，猛击<a href="http://vimeo.com/49718712" target="_blank" rel="noopener">Rob Pike</a>。</p>
+<h2 id="队列"><a href="#队列" class="headerlink" title="队列"></a>队列</h2><p>GCD提供了 <strong>调度队列</strong> （dispatch queues）来处理提交的任务；这些队列管理着你向GCD提交的任务并且以先进先出（FIFO）的顺序来执行任务。这保证了第一个加入队列的任务第一个被执行，第二个加入的任务第二个开始执行，以此类推。</p>
+<p>所有调度队列都是线程安全的从而让你可以同时在多个线程中使用它们。当你明白了调度队列如何为你的代码提供了线程安全性时，GCD的优点就很明显了。关键是选择正确的调度队列种类和正确的 <strong>调度函数</strong> （dispatching function）来提交你的任务。</p>
+<h3 id="串行队列"><a href="#串行队列" class="headerlink" title="串行队列"></a>串行队列</h3><p>串行队列中的任务同一时间只执行一件任务，每件任务只有在先前的任务完成后才开始。同时，你并不知道一个任务完成到另一个任务开始之间的间隔时间，如下图所示：<br><img src="http://cdn2.raywenderlich.com/wp-content/uploads/2014/09/Serial-Queue-Swift.png" alt=""></p>
+<p>任务的执行是在GCD掌控之下的；你唯一确定的就是GCD在同一时刻只执行一件任务并且按任务加入队列的顺序执行。</p>
+<p>因为不会在串行队列中同时执行两件任务，所以没有多个任务同时进入临界区的危险；这保证了临界区不会出现竞态条件。因此如果进入临界区的唯一途径就是通过向调度队列提交任务，那么可以保证临界区是安全的。</p>
+<h3 id="并发队列"><a href="#并发队列" class="headerlink" title="并发队列"></a>并发队列</h3><p>并发队列中的任务可以保证按进入队列的顺序被执行…仅此而已！任务可能以任意顺序完成而且你不知道何时下一个任务会开始，或是任一时刻有多少任务在运行。再一次，这完全取决于GCD。<br>下图展示了四个并发任务的例子:<br><img src="http://cdn2.raywenderlich.com/wp-content/uploads/2014/09/Concurrent-Queue-Swift.png" alt=""></p>
+<p>任务1，2和3都运行的很快，一个接一个。但是任务1在任务0开始了一段时间后才开始。同时，任务3在任务2开始后才开始但是却更早完成。</p>
+<p>何时开始一个任务完全取决于GCD。如果一个任务的执行时间和另一个的发生重叠，将由GCD来决定是否要将任务运行在另一个可用的核上或是通过上下文切换来运行另一个程序。</p>
+<p>有趣的是，GCD为每种队列类型提供了至少<em>5</em>种特别的队列。</p>
+<h3 id="队列类型"><a href="#队列类型" class="headerlink" title="队列类型"></a>队列类型</h3><p>首先，系统提供了一种特殊的串行队列 <strong>main queue</strong>。和其他的串行队列一样，在这个队列里的任务同一时刻只有一个在执行。然而，这个队列保证了所有任务会在主线程中执行，主线程是唯一一个允许更新UI的线程。这个队列用来向 <strong>UIView</strong>  对象发消息或发通知。</p>
+<p>系统同时提供了几种并发队列。这些队列和它们自身的QoS等级相关。QoS等级表示了提交任务的意图，使得GCD可以决定如何制定优先级。</p>
+<ul>
+<li>QOS_CLASS_USER_INTERACTIVE：  <strong>user interactive</strong> 等级表示任务需要被立即执行以提供好的用户体验。使用它来更新UI，响应事件以及需要低延时的小工作量任务。这个等级的工作总量应该保持较小规模。</li>
+<li>QOS_CLASS_USER_INITIATED： <strong>user initiated</strong> 等级表示任务由UI发起并且可以异步执行。它应该用在用户需要即时的结果同时又要求可以继续交互的任务。</li>
+<li>QOS_CLASS_UTILITY： <strong>utility</strong>  等级表示需要长时间运行的任务，常常伴随有用户可见的进度指示器。使用它来做计算，I/O，网络，持续的数据填充等任务。这个等级被设计成节能的。</li>
+<li>QOS_CLASS_BACKGROUND： <strong>background</strong> 等级表示那些用户不会察觉的任务。使用它来执行预加载，维护或是其它不需用户交互和对时间不敏感的任务。</li>
+</ul>
+<p>要清楚Apple的API同时也使用了全局调度队列（global dispatch queue），所以你添加的任何任务都不是这些队列中的唯一任务。</p>
+<p>最后，你可以创建自定义的串行或并发队列。意味着你至少有<em>5</em>种队列：主队列（main queue），四种通用调度队列，加上任意你自己定制的队列！</p>
+<p>以上就是调度队列的主要部分！</p>
+<p>GCD的“艺术”可归结为选择正确的队列调度函数来提交任务。最佳的学习方式就是通过下面的例子。</p>
+<h2 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h2><p>因为这篇教程的目标是使用GCD优化程序以及在不同线程中安全的运行代码，所以你会以一个几近完成的项目GooglyPuff来开始。</p>
+<p>GooglyPuff是一个未优化，非线程安全的app，使用Core Image的人脸识别API在人脸上叠加金鱼眼。初始图像可以从图片库中选择或是从网络下载一组预定的图片。</p>
+<p><a href="http://cdn5.raywenderlich.com/wp-content/uploads/2015/01/GooglyPuff_Swift_Start_1_Xcode61.zip" target="_blank" rel="noopener">GooglyPuff_Swift_Start_1</a></p>
+<p>一旦下载了工程，提取到合适的地方，打开Xcode并运行它。看起来如下：<br><img src="http://cdn3.raywenderlich.com/wp-content/uploads/2014/01/Workflow1.png" alt=""></p>
+<p>注意到当你选择 <strong>Le Internet</strong> 选项来下载图片时，一个<code>UIAlertController</code>提示框会过早的弹出。你会在教程的第二部分修复这个问题。</p>
+<p>这个工程中有4个需要关心的类：</p>
+<ul>
+<li><code>PhotoCollectionViewController</code>：app启动后的第一个视图控制器。展示所有选择的图片的缩略图。</li>
+<li><code>PhotoDetailViewController</code>：为图片加上金鱼眼并在<code>UIScrollView</code>中展示。</li>
+<li><code>Photo</code>：描述图片属性的协议。提供图片，缩略图和状态。两个类实现了这个协议：<code>DownloadPhoto</code>从<code>NSURL</code>实例化图片，<code>AssetPhoto</code>从<code>ALAsset</code>实例化图片。</li>
+<li><code>PhotoManager</code>：管理所有<code>Photo</code>对象。</li>
+</ul>
+<h2 id="使用dispatch-sync处理后台任务"><a href="#使用dispatch-sync处理后台任务" class="headerlink" title="使用dispatch_sync处理后台任务"></a>使用<code>dispatch_sync</code>处理后台任务</h2><p>返回app并从图片库中添加一些图片或使用 <strong>Le Internet</strong> 选项下载一些。</p>
+<p>留意在轻触<code>PhotoCollectionViewController</code>中的<code>UICollectionViewCell</code>后要多久才能完成<code>PhotoDetailViewController</code>的初始化；此时存在明显的延迟，尤其是在较慢的设备上浏览较大的图片时。</p>
+<p>一不小心就会在<code>UIViewController</code>的<code>viewDidLoad</code>中填充过多杂乱的方法而造成超负荷；以至于经常要等待很久视图控制器才会出现。如果可能的话，最好将一些工作转移到后台去完成，如果这些工作在加载时不是必需的。</p>
+<p>听起来是使用<code>dispatch_async</code>的时候！</p>
+<p>打开<code>PhotoDetailViewController</code>然后用下面的实现替换<code>viewDidload</code>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">override func viewDidLoad() &#123;</span><br><span class="line">  super.viewDidLoad()</span><br><span class="line">  assert(image !&#x3D; nil, &quot;Image not set; required to use view controller&quot;)</span><br><span class="line">  photoImageView.image &#x3D; image</span><br><span class="line"> </span><br><span class="line">  &#x2F;&#x2F; Resize if neccessary to ensure it&#39;s not pixelated</span><br><span class="line">  if image.size.height &lt;&#x3D; photoImageView.bounds.size.height &amp;&amp;</span><br><span class="line">     image.size.width &lt;&#x3D; photoImageView.bounds.size.width &#123;</span><br><span class="line">    photoImageView.contentMode &#x3D; .Center</span><br><span class="line">  &#125;</span><br><span class="line"> </span><br><span class="line">  dispatch_async(dispatch_get_global_queue(Int(QOS_CLASS_USER_INITIATED.value), 0)) &#123; &#x2F;&#x2F; 1</span><br><span class="line">    let overlayImage &#x3D; self.faceOverlayImageFromImage(self.image)</span><br><span class="line">    dispatch_async(dispatch_get_main_queue()) &#123; &#x2F;&#x2F; 2</span><br><span class="line">      self.fadeInNewImage(overlayImage) &#x2F;&#x2F; 3</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面代码的工作流程：</p>
+<ol>
+<li>首先将工作从主线程上转移到全局队列中。因为这是一个<code>dispatch_async</code>调用，异步提交的闭包意味着调用线程会继续执行下去。这使得<code>viewDidLoad</code>在主线程上更早的完成从而让加载的过程在感觉上更迅速。同时，人脸识别过程已经开始并会在晚些时候完成。</li>
+<li>在这时，人脸识别已经完成并生成一张新图片。因为要用这张新图片更新<code>UIImageView</code>，所以把一个闭包加入主线程中。记住 – 必须总是在主线程中操作<code>UIKit</code>！</li>
+<li>最后，用<code>fadeInNewImage</code>更新UI。</li>
+</ol>
+<p>注意到你在使用Swift的尾随闭包（trailing closure）语法，将闭包写在参数括号的后面传给<code>dispatch_async</code>。这种语法看起来更清晰，因为闭包没有内嵌到函数括号中。</p>
+<p>运行app；选择一张图片然后你会明显地发现视图控制器载入更快了，随后金鱼眼会加入进来。这给app带来了很好的效果，因为你展示出图片修改前后的变化。同时，如果你试图加载一张极其巨大的图片，app不会因为加载视图控制器而失去响应，这让app有很好的适应性。</p>
+<p>正如前面所提到的，<code>dispatch_async</code>以闭包的形式向队列中追加了一项任务并立即返回了。这项任务会在GCD决定的稍后时间执行。当你需要执行网络请求或在后台执行繁重的CPU任务时，使用<code>dispatch_async</code>不会阻塞当前进程。</p>
+<p>何时使用何种队列类型快速指南：</p>
+<ul>
+<li>自定义串行队列：当你想顺序执行后台任务并追踪它时，这是一个很好的选择。因为同时只有一个任务在执行，因此消除了资源竞争。注意如果需要从方法中获取数据，你必须内置另一个闭包来得到它或者考虑使用<code>dispatch_sync</code>。</li>
+<li>主队列（串行）：当并发队列中的任务完成需要更新UI的时候，这是一个通常的选择。为达此目的，需要在一个闭包中嵌入另一个闭包。同时，如果在主队列中调用<code>dispatch_async</code>来返回主队列，能保证新的任务会在当前方法完成后再执行。</li>
+<li>并发队列：通常用来执行与UI无关的后台任务。</li>
+</ul>
+<h2 id="获取全局队列的帮助变量（Helper-Variable）"><a href="#获取全局队列的帮助变量（Helper-Variable）" class="headerlink" title="获取全局队列的帮助变量（Helper Variable）"></a>获取全局队列的帮助变量（Helper Variable）</h2><p>你可能注意到<code>dispatch_get_global_queue</code>的QoS等级参数写起来有些繁琐。这是由于<code>qos_class_t</code>被定义为一个结构体，它包含有<code>Uint32</code>型的属性<code>value</code>，而这个属性需要被转型为<code>Int</code>。在 <strong>Utils.swift</strong> 中添加一些全局的计算变量，使获取全局队列更方便一些：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">var GlobalMainQueue: dispatch_queue_t &#123;</span><br><span class="line">  return dispatch_get_main_queue()</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">var GlobalUserInteractiveQueue: dispatch_queue_t &#123;</span><br><span class="line">  return dispatch_get_global_queue(Int(QOS_CLASS_USER_INTERACTIVE.value), 0)</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">var GlobalUserInitiatedQueue: dispatch_queue_t &#123;</span><br><span class="line">  return dispatch_get_global_queue(Int(QOS_CLASS_USER_INITIATED.value), 0)</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">var GlobalUtilityQueue: dispatch_queue_t &#123;</span><br><span class="line">  return dispatch_get_global_queue(Int(QOS_CLASS_UTILITY.value), 0)</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">var GlobalBackgroundQueue: dispatch_queue_t &#123;</span><br><span class="line">  return dispatch_get_global_queue(Int(QOS_CLASS_BACKGROUND.value), 0)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>回到  <strong>PhotoDetailViewController</strong>  中的<code>viewDidLoad</code>中，将<code>dispatch_get_global_queue</code>和<code>dispatch_get_main_queue</code>替换为帮助变量：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">dispatch_async(GlobalUserInitiatedQueue) &#123;</span><br><span class="line">  let overlayImage &#x3D; self.faceOverlayImageFromImage(self.image)</span><br><span class="line">  dispatch_async(GlobalMainQueue) &#123;</span><br><span class="line">    self.fadeInNewImage(overlayImage)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这使得调度调用更易读并且很容易看出在使用哪个队列。</p>
+<h2 id="用dispatch-after推迟任务"><a href="#用dispatch-after推迟任务" class="headerlink" title="用dispatch_after推迟任务"></a>用<code>dispatch_after</code>推迟任务</h2><p>仔细思考你的app中的UX。用户可能在第一次打开app的时候不知道该做什么，不是吗？</p>
+<p>如果在  <strong>PhotoManager</strong>  类中没有图片的时候，给用户一个提示是个不错的主意。然而，你同时要考虑用户的视线怎样扫过屏幕：如果提示出现的太快，用户可能还在看其他的地方而忽略了提示。</p>
+<p>推迟一秒钟再出现提示，此时便可抓住用户的注意力，因为他们已经对app有了第一印象。</p>
+<p>将下面的代码加到<code>showOrHideNavPrompt</code>的实现中，它位于 <strong>PhotoCollectionViewController.swift</strong> 文件底部。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">func showOrHideNavPrompt() &#123;</span><br><span class="line">  let delayInSeconds &#x3D; 1.0</span><br><span class="line">  let popTime &#x3D; dispatch_time(DISPATCH_TIME_NOW,</span><br><span class="line">                              Int64(delayInSeconds * Double(NSEC_PER_SEC))) &#x2F;&#x2F; 1</span><br><span class="line">  dispatch_after(popTime, GlobalMainQueue) &#123; &#x2F;&#x2F; 2</span><br><span class="line">    let count &#x3D; PhotoManager.sharedManager.photos.count</span><br><span class="line">    if count &gt; 0 &#123;</span><br><span class="line">      self.navigationItem.prompt &#x3D; nil</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">      self.navigationItem.prompt &#x3D; &quot;Add photos with faces to Googlyify them!&quot;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>showOrHideNavPrompt</code>会在<code>viewDidLoad</code>以及<code>UICollectionView</code>重新加载的时候被执行。代码解释如下：</p>
+<ol>
+<li>声明推迟的时间。</li>
+<li>等待<code>delayInSeconds</code>所表示的时间，然后将闭包异步地加入主队列中。</li>
+</ol>
+<p>运行app。在短暂的延迟后，提示会出现并吸引用户的注意。</p>
+<p><code>dispatch_after</code>的工作原理就像推迟的<code>dispatch_async</code>。一旦<code>dispatch_after</code>返回，你还是无法掌握实际的执行时间抑或是取消任务。</p>
+<p>想知道何时使用<code>dispatch_after</code>？</p>
+<ul>
+<li>自定义串行队列：慎用。在自定义串行队列中慎用<code>dispatch_after</code>。你最好留在主队列中。</li>
+<li>主队列（串行）：好主意。在主队列中使用<code>dispatch_after</code>是一个好主意；Xcode对此有自动补全模板。</li>
+<li>并发队列：慎用。很少会这样使用，最好留在主队列中。</li>
+</ul>
+<h2 id="单例和线程安全"><a href="#单例和线程安全" class="headerlink" title="单例和线程安全"></a>单例和线程安全</h2><p>单例。爱也好，恨也罢，它们在iOS中就像猫之于互联网一样流行。:]</p>
+<p>经常有人因为单例不是线程安全的而忧虑。这种担忧是很有道理的，考虑到他们的用法：单例经常被多个控制器同时使用。  <strong>PhotoManager</strong>  类是一个单例，所以你要仔细思考这个问题。</p>
+<p>思考两种情形，初始化单例的过程和对他进行读写的过程。</p>
+<p>先来看初始化。这看起来很简单，因为Swift在全局域中初始化变量。在Swift中，全局变量在首次使用时被初始化，并且保证初始化是原子操作。也就是说，初始化代码被视为临界区从而保证了初始化在其他线程使用全局变量之前就完成了。Swift是怎么做到的？其实，Swift在幕后使用了GCD中的<code>dispatch_once</code>，详见<a href="https://developer.apple.com/swift/blog/?id=7" target="_blank" rel="noopener">博客</a>。</p>
+<p><code>dispatch_once</code>以线程安全的方式执行且仅执行一次闭包。如果一个线程正处于临界区中 – 被提交给<code>dispatch_once</code>的任务 – 其他线程会阻塞直到它完成。并且一旦它完成，其他线程不会再执行临界区中的代码。用<code>let</code>将单例定义为全局常量，我们可以进一步保证变量在初始化后不会发生变化。从某种意义上说，所有Swift全局常亮量都天生是单例，并且线程安全地初始化。</p>
+<p>但是我们仍需要考虑读和写。尽管Swift使用<code>dispatch_once</code>来确保单例初始化是线程安全的，但不能保证它所表示的数据类型也是线程安全的。例如用一个全局变量来声明一个类实例，但在类中还是会有修改类内部数据的临界区。此时就需要其他方式来达成线程安全，比如通过对数据的同步化使用(synchronizing access)。</p>
+<h2 id="处理读写问题"><a href="#处理读写问题" class="headerlink" title="处理读写问题"></a>处理读写问题</h2><p>实例化线程安全性不是单例的唯一问题。如果单例的属性表示一个可变对象，比如<code>PhotoManager</code>中的<code>photos</code>，那么你就需要考虑那个对象是否线程安全。</p>
+<p>在Swift中任意用<code>let</code>声明的常量都是只读并且线程安全的。用<code>var</code>声明的变量是可变且非线程安全的，除非数据类型本身被设计成线程安全。Swift中的集合类型比如<code>Array</code>和<code>Dictionary</code>，当声明为变量时不是线程安全的。那么像Foundation的容器<code>NSArray</code>呢？是线程安全的吗？答案是–“可能不是”！Apple维护的一个<a href="https://developer.apple.com/library/mac/documentation/cocoa/conceptual/multithreading/ThreadSafetySummary/ThreadSafetySummary.html" target="_blank" rel="noopener">帮助列表</a>中有许多Foundation中非线程安全的类。</p>
+<p>尽管很多线程可以同时读取一个<code>Array</code>的可变实例而不出问题，但如果一个线程在修改数组的同时另一个线程却在读取这个数组，这是不安全的。你的单例目前还不能阻止这种情况发生。</p>
+<p>为了弄清楚问题，看看  <strong>PhotoManager.swift</strong>  中的<code>addPhoto</code>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">func addPhoto(photo: Photo) &#123;</span><br><span class="line">  _photos.append(photo)</span><br><span class="line">  dispatch_async(dispatch_get_main_queue()) &#123;</span><br><span class="line">    self.postContentAddedNotification()</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这是一个 <strong>写</strong> 方法，因为它修改了一个可变数组。</p>
+<p>再看看<code>photos</code>属性：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">private var _photos: [Photo] &#x3D; []</span><br><span class="line">var photos: [Photo] &#123;</span><br><span class="line">  return _photos</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个属性的getter方法是一个  <strong>读</strong>  方法。调用者得到一个数组的拷贝并且保护了原始数组不被改变，但是这不能保证一个线程在调用<code>addPhoto</code>来写的时候没有另一个线程同时也在调用getter方法读<code>photos</code>属性。</p>
+<blockquote>
+<p> <strong>注意</strong> ：在上面的代码中，为什么调用者要获取<code>photo</code>数组的拷贝？在Swift中，参数或函数返回是通过值或引用来传递的。引用传递和OC中的传指针一样，这意味着你得到的是原始的对象，对这个对象的修改会影响到其他使用了这个对象引用的代码。值传递拷贝了对象本身，对拷贝的修改不会影响原始的对象。默认情况下，Swift类实例是引用传递而结构体是值传递。</p>
+</blockquote>
+<blockquote>
+<p>Swift内置的数据类型，如<code>Array</code>和<code>Dictionary</code>，是用结构体来实现的，看起来传递集合类型会造成代码中出现大量的拷贝。不要因此担心内存使用问题。Swift的集合类型经过优化，只有在需要的时候才进行拷贝，比如通过值传递的数组在第一次被修改的时候。</p>
+</blockquote>
+<p>这是软件开发中经典的<a href="http://en.wikipedia.org/wiki/Readers%E2%80%93writers_problem" target="_blank" rel="noopener">读者写者问题</a>（Readers-Writers Problem）。GCD使用 <strong>调度屏障</strong> （dispatch barriers）提供了一个优雅的解决方案来生成<a href="http://en.wikipedia.org/wiki/Read/write_lock_pattern" target="_blank" rel="noopener">读写锁</a>。</p>
+<p>当跟并发队列一起工作时，调度屏障是一族行为像序列化瓶颈的函数。使用GCD的barrier API确保了提交的闭包是指定队列中在特定时段唯一在执行的一个。也就是说必须在所有先于调度屏障提交的任务已经完成的情况下，闭包才能开始执行。</p>
+<p>当轮到闭包时，屏障执行这个闭包并确保队列在此过程不会执行其他任务。一旦闭包完成，队列返回到默认的执行方式。GCD同时提供了同步和异步两种屏障函数。</p>
+<p>下图说明了屏障函数应用于多个异步任务的效果：</p>
+<p><img src="http://cdn4.raywenderlich.com/wp-content/uploads/2014/09/Dispatch-Barrier-Swift.png" alt=""></p>
+<p>注意队列开始就像普通的并发队列一样工作。但当屏障执行的时候，队列变成像串行队列一样。就是说，屏障是唯一一个在执行的任务。在屏障完成后，队列恢复成普通的并发队列。</p>
+<p>下面说明什么时候用 – 什么时候不应该用 – 屏障函数：</p>
+<ul>
+<li>自定义串行队列：坏选择。因为串行队列本身就是顺序执行，屏障不会起到任何帮助作用。</li>
+<li>全局并发队列：慎用。其他系统可能也在使用队列，你不应该出于自身目的而独占队列。</li>
+<li>自定义并发队列：最佳选择。用于原子操作或是临界区代码。任何需要线程安全的设置和初始化都可以使用屏障。</li>
+</ul>
+<p>因为以上唯一合适的选择就是自定义并发队列，你需要生成一个这样的队列来处理屏障函数以隔离读写操作。并发队列允许多个线程同时的读操作。</p>
+<p>打开 <strong>PhotoManager.swift</strong> 并在<code>photos</code>属性下面添加如下私有属性到类中：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">private let concurrentPhotoQueue &#x3D; dispatch_queue_create(</span><br><span class="line">    &quot;com.raywenderlich.GooglyPuff.photoQueue&quot;, DISPATCH_QUEUE_CONCURRENT)</span><br></pre></td></tr></table></figure>
+
+<p>使用<code>dispatch_queue_create</code>初始化一个并发队列<code>concurrentPhotoQueue</code>。第一个参数遵循反向DNS命名习惯；保证描述性以利于调试。第二个参数指出你的队列是串行的还是并发的。</p>
+<blockquote>
+<p> <strong>注意</strong> ：当在网上搜索例子时，你经常看到人们传<code>0</code>或<code>NULL</code>作为<code>dispatch_queue_create</code>的第二个参数。这是以一种过时的方法来生成串行调度队列；最好用参数显示声明。</p>
+</blockquote>
+<p>找到<code>addPhoto</code>并用如下实现替换之：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">func addPhoto(photo: Photo) &#123;</span><br><span class="line">  dispatch_barrier_async(concurrentPhotoQueue) &#123; &#x2F;&#x2F; 1</span><br><span class="line">    self._photos.append(photo) &#x2F;&#x2F; 2</span><br><span class="line">    dispatch_async(GlobalMainQueue) &#123; &#x2F;&#x2F; 3</span><br><span class="line">      self.postContentAddedNotification()</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>来看这段代码如何工作的：</p>
+<ol>
+<li>将写操作加入自定义的队列中。当临界区被执行时，这是队列中唯一一个在执行的任务。</li>
+<li>将对象加入数组。因为是屏障闭包，这个闭包不会和<code>concurrentPhotoQueue</code>中的其他任务同时执行。</li>
+<li>最终发送一个添加了图片的通知。这个通知应该在主线程中发送因为这涉及到UI，所以这里分派另一个异步任务到主队列中。</li>
+</ol>
+<p>这个任务解决了写问题，但是你还需要实现<code>photos</code>的读方法。</p>
+<p>为确保和写操作保持线程安全，你需要在<code>concurrentPhotoQueue</code>中执行读操作。但是你需要从函数返回读数据，所以不能异步地提交读操作到队列里，因为异步任务不能保证在函数返回前执行。</p>
+<p>因此，<code>dispatch_sync</code>是个极好的候选。</p>
+<p><code>dispatch_sync</code>同步提交任务并等到任务完成后才返回。使用<code>dispatch_sync</code>和调度屏障一起来跟踪任务；或是在需要等待返回数据时使用<code>dispatch_sync</code>。</p>
+<p>仍需小心。设想你调用<code>dispatch_sync</code>到当前队列中。这会造成死锁。因为调用在等待闭包完成，但是闭包无法完成（甚至根本没开始！），直到当前在执行的任务结束，但当前任务没法结束（因为阻塞的闭包还没完成）！这就要求你必须清醒的认识到你从哪个队列调用了闭包，以及你将任务提交到哪个队列。</p>
+<p>概述一下何时何地使用<code>dispatch_sync</code>：</p>
+<ul>
+<li>自定义串行队列：非常小心；如果你在运行一个队列时调用<code>dispatch_sync</code>调度任务到同一个队列，你显然会制造死锁。</li>
+<li>主队列（串行）：非常小心，原理同上。</li>
+<li>并发队列：好选择。用在和调度屏障同步或是等待任务完成以继续后续处理。<br>还是在 <strong>PhotoManager.swift</strong> 中，替换<code>photos</code>如下：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">var photos: [Photo] &#123;</span><br><span class="line">  var photosCopy: [Photo]!</span><br><span class="line">  dispatch_sync(concurrentPhotoQueue) &#123; &#x2F;&#x2F; 1</span><br><span class="line">    photosCopy &#x3D; self._photos &#x2F;&#x2F; 2</span><br><span class="line">  &#125;</span><br><span class="line">  return photosCopy</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+分别来看每个号码注释：</li>
+</ul>
+<ol>
+<li>同步调度到<code>concurrentPhotoQueue</code>队列执行读操作。</li>
+<li>保存图片数组的拷贝到<code>photoCopy</code>并返回它。</li>
+</ol>
+<p>恭喜 —— 你的<code>PhotoManager</code>单例已经是线程安全的了。不论你读或是写图片数组，你都有信心保证操作会安全的执行。</p>
+<h2 id="回顾"><a href="#回顾" class="headerlink" title="回顾"></a>回顾</h2><p>还是不能100%的确定GCD的本质？你可以自己创建使用GCD函数的简单例子，通过断点和<code>NSLog</code>来确保你明白发生了什么。</p>
+<p>我这里有两张动态GIF图片来帮助你理解<code>dispatch_async</code>和<code>dispatch_sync</code>。每张GIF上面都有代码辅助你理解；注意代码中的断点和相应的队列状态。</p>
+<h3 id="重访dispatch-sync"><a href="#重访dispatch-sync" class="headerlink" title="重访dispatch_sync"></a>重访dispatch_sync</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">override func viewDidLoad() &#123;</span><br><span class="line">  super.viewDidLoad()</span><br><span class="line"> </span><br><span class="line">  dispatch_sync(dispatch_get_global_queue(</span><br><span class="line">      Int(QOS_CLASS_USER_INTERACTIVE.value), 0)) &#123;</span><br><span class="line"> </span><br><span class="line">    NSLog(&quot;First Log&quot;)</span><br><span class="line"> </span><br><span class="line">  &#125;</span><br><span class="line"> </span><br><span class="line">  NSLog(&quot;Second Log&quot;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="http://cdn4.raywenderlich.com/wp-content/uploads/2014/08/dispatch_sync_in_action_swift.gif" alt=""></p>
+<p>下面对图片中的几个状态做说明：</p>
+<ol>
+<li>主队列按部就班的执行任务 —— 紧接着的任务是实例化包含<code>viewDidLoad</code>的<code>UIViewController</code>类。</li>
+<li><code>viewDidLoad</code>在主线程中执行。</li>
+<li><code>dispatch_sync</code>闭包被加入到全局队列中稍后执行。主线程停下来等待闭包完成。同时，全局队列正在并发执行任务；记住闭包以FIFO的顺序从全局队列中取出，但是会并发地执行。全局队列首先处理<code>dispatch_sync</code>闭包加入前已经存在队列中的任务。</li>
+<li>最后，轮到<code>dispatch_sync</code>闭包执行。</li>
+<li>闭包执行完毕，主线程得以继续。</li>
+<li><code>viewDidLoad</code>方法完成，主队列接着处理其它任务。</li>
+</ol>
+<p><code>dispatch_sync</code>把任务加入队列并一直等待其完成。<code>dispatch_async</code>做了差不多的工作，只是它不会等待任务完成，而是转而去继续其他工作。</p>
+<h3 id="重访dispatch-async"><a href="#重访dispatch-async" class="headerlink" title="重访dispatch_async"></a>重访dispatch_async</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">override func viewDidLoad() &#123;</span><br><span class="line">  super.viewDidLoad()</span><br><span class="line"> </span><br><span class="line">  dispatch_async(dispatch_get_global_queue(</span><br><span class="line">      Int(QOS_CLASS_USER_INTERACTIVE.value), 0)) &#123;</span><br><span class="line"> </span><br><span class="line">    NSLog(&quot;First Log&quot;)</span><br><span class="line"> </span><br><span class="line">  &#125;</span><br><span class="line"> </span><br><span class="line">  NSLog(&quot;Second Log&quot;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="http://cdn4.raywenderlich.com/wp-content/uploads/2014/08/dispatch_async_in_action_swift.gif" alt=""></p>
+<ol>
+<li>主队列按部就班的执行任务 —— 紧接着的任务是实例化包含<code>viewDidLoad</code>的<code>UIViewController</code>类。</li>
+<li><code>viewDidLoad</code>在主线程中执行。</li>
+<li><code>dispatch_async</code>闭包被加入到全局队列中稍后执行。</li>
+<li><code>viewDidLoad</code>在<code>dispatch_async</code>后继续向下执行，主线程继续其他任务。同时，全局队列正在并发执行任务；记住闭包以FIFO的顺序从全局队列中取出，但是会并发地执行。</li>
+<li>执行<code>dispatch_async</code>所添加的闭包。</li>
+<li><code>dispatch_async</code>闭包完成，<code>NSLog</code>输出到控制台。</li>
+</ol>
+<p>在这个特别的例子中，第一个<code>NSLog</code>在第二个<code>NSLog</code>后执行。事实并非总是如此——这取决于硬件在彼时正在做什么，你无法控制或知晓哪个语句会先执行。“第一个”<code>NSLog</code>在某种调用情况下可能会先执行。</p>
+<h1 id="下一步？"><a href="#下一步？" class="headerlink" title="下一步？"></a>下一步？</h1><p>在本教程中，你已经学到了如何编写线程安全的代码以及如何在保持主线程响应性的前提下执行CPU密集型的任务。</p>
+<p>可以下载<a href="http://cdn4.raywenderlich.com/wp-content/uploads/2015/01/GooglyPuff_Swift_End_1_Xcode61_start.zip" target="_blank" rel="noopener">GooglyPuff</a>，里面包含了本教程中所做的所有改进。教程的第二部分会在此基础上继续改进。</p>
+<p>如果你打算优化自己的app，你真的应该使用  <strong>Instruments</strong> 中的<strong>Time Profile</strong> 模板来测试。使用方法已经超出本教程范围，可以查看<a href="http://www.raywenderlich.com/?p=23037" target="_blank" rel="noopener">怎样使用Instruments</a>。</p>
+<p>同时确保你在真机上测试，因为在模拟器上测试会得到跟真实体验相差甚远的结果。</p>
+<p>在教程的下篇你会更深入GCD的API中做些更酷的事情。</p>
+<p>译者：<a href="http://www.loveltyoic.com" target="_blank" rel="noopener">loveltyoic</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2015/01/28/2015-01-28-gcd-1-slash-2/" data-id="ckc4gc9m00019htbo1hzsacu1" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2015/01/29/2015-01-29-gcd-2-slash-2/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          在Swift中应用Grand Central Dispatch(下）
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2014/11/21/2014-11-21-active-record-callbacks/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">ActiveRecord中的Callback浅析</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Git/">Git</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Octopress/">Octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Rails/">Rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Swift-GCD/">Swift GCD</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/UX/">UX</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/api/">api</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/octopress/">octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails/">rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails-mongoid/">rails mongoid</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/reactive/">reactive</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/ruby/">ruby</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/06/">June 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/02/">February 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/01/">January 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/11/">November 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/05/">May 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/12/">December 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/11/">November 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/09/">September 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/07/">July 2013</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2015/06/23/2015-06-23-eventmachine/">em-synchrony 中连接池的实现原理</a>
+          </li>
+        
+          <li>
+            <a href="/2015/02/03/2015-02-03-use-nsoperation-nsoperationqueue-swift/">在Swift中使用NSOperation 和NSOperationQueue</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/29/2015-01-29-gcd-2-slash-2/">在Swift中应用Grand Central Dispatch(下）</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/28/2015-01-28-gcd-1-slash-2/">在Swift中应用Grand Central Dispatch(上）</a>
+          </li>
+        
+          <li>
+            <a href="/2014/11/21/2014-11-21-active-record-callbacks/">ActiveRecord中的Callback浅析</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

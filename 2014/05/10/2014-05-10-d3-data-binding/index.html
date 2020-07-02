@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>D3中的数据绑定--enter()和exit() | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="最近的几个项目都用到了D3,各种各样的图也画了一些，算是积攒了一点经验。 在D3的主页上可以看到各种各样的实现例子和源码，基本上常见的图都可以找到，是很好的边做边学的材料。 但是对于初学者来说，比如本人，总会看到一些代码不太能理解，虽然照猫画虎的实现了，但总觉得少了点融会贯通的感觉。不过随着经验的积累，加上各种大牛的分享，还是摸到了一些门道。 其实D3本质上来说做的就是将数据绑定到元素上去，一切看">
+<meta property="og:type" content="article">
+<meta property="og:title" content="D3中的数据绑定--enter()和exit()">
+<meta property="og:url" content="http://yoursite.com/2014/05/10/2014-05-10-d3-data-binding/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="最近的几个项目都用到了D3,各种各样的图也画了一些，算是积攒了一点经验。 在D3的主页上可以看到各种各样的实现例子和源码，基本上常见的图都可以找到，是很好的边做边学的材料。 但是对于初学者来说，比如本人，总会看到一些代码不太能理解，虽然照猫画虎的实现了，但总觉得少了点融会贯通的感觉。不过随着经验的积累，加上各种大牛的分享，还是摸到了一些门道。 其实D3本质上来说做的就是将数据绑定到元素上去，一切看">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2014-05-10T12:04:00.000Z">
+<meta property="article:modified_time" content="2020-07-02T07:12:30.189Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-2014-05-10-d3-data-binding" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2014/05/10/2014-05-10-d3-data-binding/" class="article-date">
+  <time datetime="2014-05-10T12:04:00.000Z" itemprop="datePublished">2014-05-10</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/UX/">UX</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      D3中的数据绑定--enter()和exit()
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>最近的几个项目都用到了<a href="http://d3js.org/" target="_blank" rel="noopener">D3</a>,各种各样的图也画了一些，算是积攒了一点经验。</p>
+<p>在D3的主页上可以看到各种各样的实现例子和源码，基本上常见的图都可以找到，是很好的边做边学的材料。</p>
+<p>但是对于初学者来说，比如本人，总会看到一些代码不太能理解，虽然照猫画虎的实现了，但总觉得少了点融会贯通的感觉。<br>不过随着经验的积累，加上各种大牛的分享，还是摸到了一些门道。</p>
+<p>其实D3本质上来说做的就是将数据绑定到元素上去，一切看上去很神奇图型都是建立在这个基础之上的。因此，深入了解D3中的数据绑定是十分必要的。一旦掌握，很容易做到举一反三，即使是一些复杂的图也都不在话下啦。</p>
+<a id="more"></a>
+
+<p>OK，感想到此为止。</p>
+<p>Give me example!<br><a href="https://gist.github.com/loveltyoic/4d4c8d6fa1c10e46518b" target="_blank" rel="noopener">完整代码在这里</a>，可以copy后用chrome等打开，从console中执行其中的三个函数，边看边操作我认为永远是最好的学习方式:)</p>
+<p>首先,要讲数据绑定，没数据怎么行</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> data_1 = [&#123;<span class="attr">x</span>:<span class="number">100</span>,<span class="attr">y</span>:<span class="number">100</span>&#125;, &#123;<span class="attr">x</span>:<span class="number">200</span>,<span class="attr">y</span>:<span class="number">200</span>&#125;, &#123;<span class="attr">x</span>:<span class="number">300</span>,<span class="attr">y</span>:<span class="number">300</span>&#125;],</span><br><span class="line">    data_2 = [&#123;<span class="attr">x</span>:<span class="number">50</span>,<span class="attr">y</span>:<span class="number">50</span>&#125;, &#123;<span class="attr">x</span>:<span class="number">150</span>,<span class="attr">y</span>:<span class="number">150</span>&#125;],</span><br><span class="line">    data_3 = [&#123;<span class="attr">x</span>:<span class="number">400</span>,<span class="attr">y</span>:<span class="number">400</span>&#125;, &#123;<span class="attr">x</span>:<span class="number">500</span>,<span class="attr">y</span>:<span class="number">500</span>&#125;, &#123;<span class="attr">x</span>:<span class="number">600</span>,<span class="attr">y</span>:<span class="number">600</span>&#125;];</span><br><span class="line"><span class="string">``</span><span class="string">`    </span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">可以看出，这里定义了三组数据，都是数组类型。接下来画一个svg的容器:</span></span><br><span class="line"><span class="string">`</span><span class="string">``</span>js</span><br><span class="line"><span class="keyword">var</span> svg = d3.select(<span class="string">'body'</span>).append(<span class="string">'svg'</span>).attr(<span class="string">'width'</span>, <span class="string">'800'</span>).attr(<span class="string">'height'</span>, <span class="string">'800'</span>);</span><br></pre></td></tr></table></figure>
+
+<p>然后，重点来啦 </p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">draw1</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">  svg.selectAll(<span class="string">'circle'</span>).data(data_1).enter()</span><br><span class="line">    .append(<span class="string">'circle'</span>)</span><br><span class="line">      .attr(<span class="string">'r'</span>, <span class="string">'20'</span>)</span><br><span class="line">      .attr(<span class="string">'cx'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">d</span>)</span>&#123;</span><br><span class="line">        <span class="keyword">return</span> d.x;</span><br><span class="line">      &#125;)</span><br><span class="line">      .attr(<span class="string">'cy'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">d</span>)</span>&#123;</span><br><span class="line">        <span class="keyword">return</span> d.y;</span><br><span class="line">      &#125;);  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这是第一个函数，注意里面的<code>data(data_1)</code>，这就是把<code>data_1</code>绑定到所有<code>circle</code>元素上啦。</p>
+<p>But wait!根本没有什么<code>circle</code>元素好不好，忽悠谁呢。</p>
+<p>的确，这时候还没有<code>circle</code>，但是好戏还在后面呢不是,紧接着不就是<code>enter()</code>了吗。</p>
+<p>我在开始的时候，也是完全不懂<code>enter()</code>是神马意思啊，看到例子里面都写，咱也照做呗。但要是一直不去弄懂，那水平也就止于模仿了，何谈超越呢？</p>
+<p>这个<code>enter()</code>啊，单独讲还真不好说，这也就是为啥我准备了三个例子，等都看完了，理解的应该就算比较全面了。<br>就先从这第一讲起吧。</p>
+<p>因为没有<code>circle</code>, 此时<code>selectAll(&#39;circle&#39;)</code>只会返回一个空的数组<code>[]</code>。但神奇的是，这个空的数组上调用<code>enter()</code>后，会生成与这里的<code>data_1</code>等长的一个groups数组，然后将数据一一对应的绑定到groups中的每个元素上去。<br>具体到这里，因为<code>data_1</code>有三个数据，所以会生成三个元素。</p>
+<p>这个占位元素会作为接下来执行操作的容器。比如这里的<code>append(&#39;circle&#39;)</code>, 就是在元素上画圆点。</p>
+<p>最为神奇的是, 因为此时每个元素已经有了自己的数据绑定，我们可以通过<code>function(d){}</code>来获取到绑定的数据。并且还可以用<code>function(d,i){}</code>中的<code>i</code>来获取到数据在数组中的位置。</p>
+<p>讲到这里，故事还远远没有结束。</p>
+<p>数据往往是变化的，那么图表也应该随之变化才对嘛。</p>
+<p>看第二个例子：</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">draw2</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">  <span class="comment">//part 1</span></span><br><span class="line">  svg.selectAll(<span class="string">'circle'</span>).data(data_2).exit().remove();</span><br><span class="line">  <span class="comment">//part 2</span></span><br><span class="line">  svg.selectAll(<span class="string">'circle'</span>)</span><br><span class="line">      .attr(<span class="string">'r'</span>, <span class="string">'20'</span>)</span><br><span class="line">      .attr(<span class="string">'cx'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">d</span>)</span>&#123;</span><br><span class="line">        <span class="keyword">return</span> d.x;</span><br><span class="line">      &#125;)</span><br><span class="line">      .attr(<span class="string">'cy'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">d</span>)</span>&#123;</span><br><span class="line">        <span class="keyword">return</span> d.y;</span><br><span class="line">      &#125;);</span><br><span class="line">&#125;</span><br><span class="line"><span class="string">``</span><span class="string">` </span></span><br><span class="line"><span class="string">有enter(),怎么能没有exit()。倒是看看这个exit()有何神通。</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">看回前面，`</span>data_2<span class="string">`中只有两个数据，可是在我们运行了draw1()之后，此时就已经有了3个`</span>circle<span class="string">`元素。可是之后我们却只给它绑定了2个数据，这是二桃杀三士的节奏么？</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">停止联想，我们还是来看看会发生什么吧。</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">最后的`</span>circle<span class="string">`元素因为没有绑定到元素。他的数据会变成null，也就是没有数据。是时候让`</span>exit()<span class="string">`登场了。</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">因为这个`</span>circle<span class="string">`没有数据，他会被exit()捕获，然后就任杀任剐息听尊便啦。一般就是将这个元素从页面上删除，当然还可以用些动画来展现。</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">不过还有一点必须提到，虽然绑定的数据变化了，但是元素的视图可不会自动的改变。</span></span><br><span class="line"><span class="string">也就是说，要想更新视图，需要用新数据来更新他们的属性。由part 2实现。</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">你以为这就结束了吗？还不够！！！</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">再来看看最后一个例子。</span></span><br><span class="line"><span class="string">`</span><span class="string">``</span>js</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">draw3</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">  <span class="comment">//part 1</span></span><br><span class="line">  svg.selectAll(<span class="string">'circle'</span>).data(data_3).enter()</span><br><span class="line">    .append(<span class="string">'circle'</span>)</span><br><span class="line">      .attr(<span class="string">'r'</span>,<span class="string">'30'</span>);    </span><br><span class="line">  <span class="comment">//part 2    </span></span><br><span class="line">  svg.selectAll(<span class="string">'circle'</span>)</span><br><span class="line">    .attr(<span class="string">'cx'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">d</span>)</span>&#123;</span><br><span class="line">      <span class="keyword">return</span> d.x;</span><br><span class="line">    &#125;)</span><br><span class="line">    .attr(<span class="string">'cy'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">d</span>)</span>&#123;</span><br><span class="line">      <span class="keyword">return</span> d.y;</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>数据又更新啦啦啦啦，变成三个点！！！</p>
+<p>这个时候<code>enter()</code>会发生什么呢？因为只有2个<code>circle</code>，却绑定了三个数据，自然要生成一个新的元素。</p>
+<p>看到没，这里特别将圆点的半径改成30了，当然是有意为之，接着看。</p>
+<p>接下来<code>selectAll(&#39;circle&#39;)</code>，然后重绘他们的坐标位置。</p>
+<p>看，新增点的半径是30，但是其他两个点还是20！</p>
+<p>这就是玄机啊。当重新绑定数据后再enter(),此时操作的只是groups中新增的那些元素。因为新增了一条数据，会首先生成一个元素容器，然后绑定数据到他身上，再之后的<code>append</code>也只是针对这个新元素，而不会影响已有元素。<br>对已存在的元素来说，变化的只有绑定的数据。只有再次选择并更新属性，才会变化视图。即part 2的实现。</p>
+<p>最后还有一点补充，D3中还有另一个绑定数据的datum()，其实就只是很简单的绑定一条数据到一个元素上。</p>
+<p>举个简单例子</p>
+<pre><code class="js"><span class="keyword">var</span> line = d3.svg.line()
+             .x(<span class="function"><span class="keyword">function</span>(<span class="params">d, i</span>) </span>{ <span class="keyword">return</span> i; })
+             .y(<span class="function"><span class="keyword">function</span>(<span class="params">d</span>) </span>{ <span class="keyword">return</span> d; })
+<span class="comment">//1             </span>
+svg.append(<span class="string">'path'</span>)
+  .datum([<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>])
+  .attr(<span class="string">'d'</span>, line);
+<span class="comment">//2  </span>
+svg.append(<span class="string">'path'</span>)
+  .attr(<span class="string">'d'</span>, line([<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>]));</code></pre>
+<p>看到1和2的区别了么？</p>
+<p>1是在画之前用datum绑定数据到path上，虽然数据是个数组，但这与<code>data()</code>的用法相差甚远。</p>
+<p>这里的数据同样是数组，却是因为画线需要提供多个点的数据，并且[1,2,3]是只绑定到这个path上的，不会像<code>data()</code>一样有多少数据就生成多少元素。</p>
+<p>甚至可以不用<code>datum()</code>，只是在调用<code>line()</code>的时候作为参数给它,像2中的实现方法.</p>
+<p>虽然画出来效果是一样的，但区别在于，2的方式没有没有绑定数据到path.</p>
+<p>通过<code>selectAll(&#39;path&#39;).data()</code>一看便知</p>
+<p><a href="http://bost.ocks.org/mike/selection/#data" target="_blank" rel="noopener">D3作者的文章</a>，甩我这里讲的N条街，真正的深入理解，感谢作者！</p>
+<p>乎，好久没更新文章了，写blog其实真的蛮有快感呐。即使文笔再烂，即使水平有限，但分享永远是快乐的！</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2014/05/10/2014-05-10-d3-data-binding/" data-id="ckc4gc9la000lhtboh45t5cpu" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2014/11/21/2014-11-21-active-record-callbacks/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          ActiveRecord中的Callback浅析
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2013/12/14/2013-12-14-how-to-build-website/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">大话搭建网站</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Git/">Git</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Octopress/">Octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Rails/">Rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Swift-GCD/">Swift GCD</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/UX/">UX</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/api/">api</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/octopress/">octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails/">rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails-mongoid/">rails mongoid</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/reactive/">reactive</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/ruby/">ruby</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/06/">June 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/02/">February 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/01/">January 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/11/">November 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/05/">May 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/12/">December 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/11/">November 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/09/">September 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/07/">July 2013</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2015/06/23/2015-06-23-eventmachine/">em-synchrony 中连接池的实现原理</a>
+          </li>
+        
+          <li>
+            <a href="/2015/02/03/2015-02-03-use-nsoperation-nsoperationqueue-swift/">在Swift中使用NSOperation 和NSOperationQueue</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/29/2015-01-29-gcd-2-slash-2/">在Swift中应用Grand Central Dispatch(下）</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/28/2015-01-28-gcd-1-slash-2/">在Swift中应用Grand Central Dispatch(上）</a>
+          </li>
+        
+          <li>
+            <a href="/2014/11/21/2014-11-21-active-record-callbacks/">ActiveRecord中的Callback浅析</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>大话搭建网站 | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="现在的网站真是太普遍了，随便哪个公司或商家，如果没有个网站都不好意思跟人打招呼。 今天就来说说要搭建一个网站所需要的工作，当然不可能说看了就马上建个网站出来，但是起码对建站有个概念上的理解。奥巴马都呼吁美国全民写代码，我们怎么能再甘为人后？哪里不懂学哪里，so easy! 由于这篇文章是面向入门的同学，所以我将搭网站类比于建豪宅（土豪当道啊），方便大家理解（其实是方便我自己吐槽）。 先来介绍下角色">
+<meta property="og:type" content="article">
+<meta property="og:title" content="大话搭建网站">
+<meta property="og:url" content="http://yoursite.com/2013/12/14/2013-12-14-how-to-build-website/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="现在的网站真是太普遍了，随便哪个公司或商家，如果没有个网站都不好意思跟人打招呼。 今天就来说说要搭建一个网站所需要的工作，当然不可能说看了就马上建个网站出来，但是起码对建站有个概念上的理解。奥巴马都呼吁美国全民写代码，我们怎么能再甘为人后？哪里不懂学哪里，so easy! 由于这篇文章是面向入门的同学，所以我将搭网站类比于建豪宅（土豪当道啊），方便大家理解（其实是方便我自己吐槽）。 先来介绍下角色">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2013-12-14T05:15:00.000Z">
+<meta property="article:modified_time" content="2020-07-02T07:12:30.188Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-2013-12-14-how-to-build-website" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2013/12/14/2013-12-14-how-to-build-website/" class="article-date">
+  <time datetime="2013-12-14T05:15:00.000Z" itemprop="datePublished">2013-12-14</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/rails/">rails</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      大话搭建网站
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>现在的网站真是太普遍了，随便哪个公司或商家，如果没有个网站都不好意思跟人打招呼。</p>
+<p>今天就来说说要搭建一个网站所需要的工作，当然不可能说看了就马上建个网站出来，但是起码对建站有个概念上的理解。<br>奥巴马都呼吁美国全民写代码，我们怎么能再甘为人后？哪里不懂学哪里，so easy!</p>
+<p>由于这篇文章是面向入门的同学，所以我将搭网站类比于建豪宅（土豪当道啊），方便大家理解（其实是方便我自己吐槽）。</p>
+<p>先来介绍下角色</p>
+<p>你，豪宅主人：外博赛特</p>
+<p>用户，你的一个朋友：盖斯特</p>
+<p>你的管家：瑟沃儿</p>
+<p>情节很简单：盖斯特听说你建了座豪宅，里面都是奇珍异宝啊，特想来参观一下</p>
+<a id="more"></a>
+<p>##服务器<br>建豪宅首先得有一块地皮吧，不然岂不是违建了，大天朝能容得下你么？</p>
+<p>其实就可以把土地类比为服务器。<br>服务器听起来比较高端，不过这都什么年代了，不就是计算机么，不就是比较NB的计算机么，只要有公网IP，24小时在线，就齐活了。</p>
+<p>当然服务器可以买，也可以租。<br>比较经济的方式就是租用了，还有人给看管。但是土地就不同了，土地不是你想买，想买就能买~<br>因为土地是属于国家的，你只是租用，骚年！</p>
+<p>等等，刚才说的公网IP又是什么东东啊？<br>不要急，我喝口水再说，咕咚咕咚咕咚，其实就是你的服务器在网络上的地址啦。<br>就像你的豪宅要有地址一样，只是这个地址不是给人记的，因为这是一串数字。</p>
+<p>假如盖斯特问你：你家住哪啊？<br>你：东经xxx度，北纬xxx度。<br>那么他没杀了你说明他爱你。</p>
+<p>扯了这么多，服务器的概念应该大概了解了吧，那么再回到如何租用服务器。</p>
+<p>其实一般就是指租用VPS（虚拟专用主机）。推荐两个服务商<a href="https://www.linode.com/" target="_blank" rel="noopener">Linode</a>与<a href="https://www.digitalocean.com/" target="_blank" rel="noopener">Digital Ocean</a>。前者用的人最多，后者最低只要5美元一个月，具体就要按需选择了。<br>一般服务提供商会有一些操作系统供选择，舍linux其谁？而且还有一些现成的软件环境可用，免去自己安装的麻烦。<br>##域名<br>刚才都说了，经纬度也不是一般人能记住的，而公网IP也不是一般人能记住的。</p>
+<p>那么有同学要问了，我都是用IP访问网站的，我不是一般人吧，我NB吧。<br>我只想说：为什么放弃治疗。</p>
+<p>虽然经纬度记不住，可妈妈也没担心你找不到家吧。</p>
+<p>因为你会记住你家住在xxx区xxx路xxx号，找不到了还可以问问警察叔叔（千万别说我家住在东经xxx度，北纬xxx度，会被打脸的）。<br>域名也是相同的作用，他是方便人们记忆的。<br>为什么各大网站、电商都在把域名越改越短呢，就是方便用户记忆从而吸引流量嘛。<br>当然一个短小且有意义的域名是天价的，一般你首先想到的基本都被抢注了，就像网游中经常可以看到的网名：好名字都让dog给起了~</p>
+<p>最后推荐一个域名服务商<a href="http://www.godaddy.com/" target="_blank" rel="noopener">GoDaddy</a>(跟《爸爸去哪儿》没关系哦)。</p>
+<p>##Web服务器软件<br>假设你的豪宅建好了，盖斯特要来参观参观。他根据你给的地址（域名）过来了，首先需要先敲门吧，当当当<del>当当当</del><br>如果你自己过来开门就太没范儿了，哪个土豪天天守家里给人开门啊？</p>
+<p>必然得有个管家吧。</p>
+<p>一开门，Welcome, sir~<br>一口地道的英国伦敦腔，倍儿有面子~</p>
+<p>其实这个管家就是咱们的Web Server，他负责处理用户的请求，根据用户的动作，将网站的内容呈现给用户。<br>往深了说，这里面会涉及到请求的调度啊，阻塞啊，说了你也不懂（其实是我也说不明白）。</p>
+<p>同样推荐两个我用过的：Apache和Nginx。<br>##开发<br>以上的说都是在搭建网站的环境，就像建了一个空的房子。但是里面什么也没有，怎么能称作豪宅呢？<br>说好的奇珍异宝呢，说好的海誓山盟呢，说好的幸福呢，说好的……（啪！）<br>从而可以看出，其实最重要的就是网站的内容，而这就是代码量最大的部分了（路人甲：好像前面根本不需要写代码吗？啪！）</p>
+<p>目前流行的有PHP，Java，.NET等等啊,其实用什么语言写并不重要，但是每种语言都有其擅长的地方。</p>
+<p>我用Rails我自豪，我用Rails我骄傲。<br>因为Rails足够优雅与敏捷，非常适合Web快速开发，这也是他的创始人DHH的理念。<br>对于一般的小型应用，比如公司的宣传展示，会议注册等等，使用Rails只要3、5天就可以搞定。</p>
+<p>你可以固守你的PHP，我就喜欢用我的Ruby on Rails</p>
+<p>Ruby on Rails, 生来是让Web开发更敏捷的银弹</p>
+<p>哪怕使用者寥寥，但，那又怎样？</p>
+<p>我是Railser，我为自己‘带盐’。</p>
+<p>##页面设计<br>后台逻辑再复杂，代码写的再NB，这些用户都是感觉不到的。可以说，所有网民朋友都是外貌协会的。<br>即使你的网站不够炫，不够酷毙，但起码要排列整齐，色彩搭配不那么洗剪吹吧。<br>这也是为什么各大网站都在招前端，招UI，招美工的原因。<br>但对于小型的网站，其实跟本没这个必要。</p>
+<p>隆重推荐一个主题网站<a href="http://themeforest.net/" target="_blank" rel="noopener">themeforest</a>，听听，主题森林，多么霸气侧漏！我好后悔一开始没遇见他！</p>
+<p>好多好多主题啊，价格从几美元到几十美元不等，很多都是专业的设计团队，水准一流。<br>但这些主题并不是针对你的网站定制的，而且好的主题也会有很多人采用，所以需要自己稍微修改一下，另外就是会跟其他网站“撞衫”。但你又不是google, facebook, 撞就撞吧，好看就行了呗，别想太多了。</p>
+<p>对了，还有一个利器就是<a href="http://v3.bootcss.com/" target="_blank" rel="noopener">bootstrap</a>，twitter工程师们开发出来的开源前端框架，感谢伟大的开源，人类进步的阶梯。<br>##写在最后<br>本来是想写篇很严肃的技术文章，怎料浸淫屌丝文化多年，话就不会好好说了，越写越扯着蛋，干货不多，吐槽不少。<br>但是有一点我要很郑重的说，我爱互联网！<br>互联网改变了我们的生活，这是一个颠覆与创造的大西部。<br>而Web开发真心是一个需要广度的领域，这里技术日新月异，概念不断涌现，但这，不就是它迷人的地方吗？</p>
+<p>夹带点私货：<a href="http://www.fluidcars.com" target="_blank" rel="noopener">车流</a>是我自己的一个创业项目，我的目标是做中国的租车Airbnb，欢迎留下你的意见！</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2013/12/14/2013-12-14-how-to-build-website/" data-id="ckc4gc9l8000khtbobnge2kd0" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2014/05/10/2014-05-10-d3-data-binding/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          D3中的数据绑定--enter()和exit()
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2013/11/13/2013-11-13-grape/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">使用goliath+grape构建API服务</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Git/">Git</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Octopress/">Octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Rails/">Rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Swift-GCD/">Swift GCD</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/UX/">UX</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/api/">api</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/octopress/">octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails/">rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails-mongoid/">rails mongoid</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/reactive/">reactive</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/ruby/">ruby</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/06/">June 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/02/">February 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/01/">January 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/11/">November 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/05/">May 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/12/">December 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/11/">November 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/09/">September 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/07/">July 2013</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2015/06/23/2015-06-23-eventmachine/">em-synchrony 中连接池的实现原理</a>
+          </li>
+        
+          <li>
+            <a href="/2015/02/03/2015-02-03-use-nsoperation-nsoperationqueue-swift/">在Swift中使用NSOperation 和NSOperationQueue</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/29/2015-01-29-gcd-2-slash-2/">在Swift中应用Grand Central Dispatch(下）</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/28/2015-01-28-gcd-1-slash-2/">在Swift中应用Grand Central Dispatch(上）</a>
+          </li>
+        
+          <li>
+            <a href="/2014/11/21/2014-11-21-active-record-callbacks/">ActiveRecord中的Callback浅析</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

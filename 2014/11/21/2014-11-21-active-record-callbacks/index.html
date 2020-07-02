@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>ActiveRecord中的Callback浅析 | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="在使用Rails或者说ActiveRecord的过程中，我们都会用一些callback来使我们的代码更紧凑简洁。我们只需要知道用法就可以了，但是你是否也会好奇，这些神奇的callback是怎么实现的呢?下面通过源码加注释的方式粗略的说明一下我的探究过程。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ActiveRecord中的Callback浅析">
+<meta property="og:url" content="http://yoursite.com/2014/11/21/2014-11-21-active-record-callbacks/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="在使用Rails或者说ActiveRecord的过程中，我们都会用一些callback来使我们的代码更紧凑简洁。我们只需要知道用法就可以了，但是你是否也会好奇，这些神奇的callback是怎么实现的呢?下面通过源码加注释的方式粗略的说明一下我的探究过程。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2014-11-21T01:13:00.000Z">
+<meta property="article:modified_time" content="2020-07-02T07:12:30.190Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-2014-11-21-active-record-callbacks" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2014/11/21/2014-11-21-active-record-callbacks/" class="article-date">
+  <time datetime="2014-11-21T01:13:00.000Z" itemprop="datePublished">2014-11-21</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Rails/">Rails</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      ActiveRecord中的Callback浅析
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在使用Rails或者说ActiveRecord的过程中，我们都会用一些callback来使我们的代码更紧凑简洁。<br>我们只需要知道用法就可以了，但是你是否也会好奇，这些神奇的callback是怎么实现的呢?<br>下面通过源码加注释的方式粗略的说明一下我的探究过程。</p>
+<a id="more"></a>
+<p>首先定义User类，并给他添加几个callback，用了3种形式</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ShowMyself</span></span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">before_validation</span><span class="params">(model)</span></span></span><br><span class="line">    puts <span class="string">'def callback by object'</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">User</span> &lt; ActiveRecord::Base</span></span><br><span class="line">  before_create <span class="symbol">:say_hello</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">say_hello</span></span></span><br><span class="line">    puts <span class="string">'def callback by method'</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  before_validation ShowMyself.new</span><br><span class="line"></span><br><span class="line">  before_save <span class="keyword">do</span> </span><br><span class="line">    puts <span class="string">'def callback by block'</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"><span class="string">``</span><span class="string">` </span></span><br><span class="line"><span class="string">那么问题来了，`</span>before_validation ShowMyself.new<span class="string">`是怎么工作的呢？</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">- 从`</span>before_validation<span class="string">`开始查找</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">`</span><span class="string">``</span>ruby</span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">before_validation</span><span class="params">(*args, &amp;block)</span></span></span><br><span class="line">  options = args.last</span><br><span class="line">  <span class="keyword">if</span> options.is_a?(Hash) &amp;&amp; options[<span class="symbol">:on</span>]</span><br><span class="line">    options[<span class="symbol">:if</span>] = Array(options[<span class="symbol">:if</span>])</span><br><span class="line">    options[<span class="symbol">:on</span>] = Array(options[<span class="symbol">:on</span>])</span><br><span class="line">    options[<span class="symbol">:if</span>].unshift lambda &#123; <span class="params">|o|</span></span><br><span class="line">      options[<span class="symbol">:on</span>].<span class="keyword">include</span>? o.validation_context</span><br><span class="line">    &#125;</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line">  set_callback(<span class="symbol">:validation</span>, <span class="symbol">:before</span>, *args, &amp;block)</span><br><span class="line">  <span class="comment"># set_callback(:validation, :before, ShowMyself.new)</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>进入<code>set_callback(:validation, :before, ShowMyself.new)</code></li>
+</ul>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">set_callback</span><span class="params">(name, *filter_list, &amp;block)</span></span></span><br><span class="line"></span><br><span class="line">  <span class="comment"># name = :validation</span></span><br><span class="line">  <span class="comment"># filter_list = [:before, ShowMyself.new]</span></span><br><span class="line"></span><br><span class="line">  type, filters, options = normalize_callback_params(filter_list, block)</span><br><span class="line"></span><br><span class="line">  <span class="comment"># 调用normalize_callback_params，得到如下返回</span></span><br><span class="line"></span><br><span class="line">  <span class="comment"># type = :before</span></span><br><span class="line">  <span class="comment"># filters = [ShowMyself.new]</span></span><br><span class="line">  <span class="comment"># options = &#123;&#125;</span></span><br><span class="line"></span><br><span class="line">  self_chain = get_callbacks name</span><br><span class="line"></span><br><span class="line">  <span class="comment"># get_callbacks 得到 CallbackChain类型的实例, </span></span><br><span class="line">  <span class="comment"># 在console里面通过User._validation_callbacks就可以得到它了</span></span><br><span class="line">  <span class="comment"># 其他的如_save_callbacks, _create_callbacks都一样可以看到</span></span><br><span class="line">  </span><br><span class="line">  mapped = filters.map <span class="keyword">do</span> <span class="params">|filter|</span></span><br><span class="line">    Callback.build(self_chain, filter, type, options)</span><br><span class="line">    <span class="comment"># Callback.build(self_chain, ShowMyself.new, :before, &#123;&#125;)</span></span><br><span class="line">    <span class="comment"># 这里可以暂时知道它是一个Callback实例就可以了，后面会有说明</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line">  <span class="comment"># mapped = [以ShowMyself.new为filter的Callback实例]</span></span><br><span class="line"></span><br><span class="line">  <span class="comment"># 记住name = :validation</span></span><br><span class="line">  __update_callbacks(name) <span class="keyword">do</span> <span class="params">|target, chain|</span></span><br><span class="line">    <span class="comment"># 在当前block中</span></span><br><span class="line">    <span class="comment"># target = User</span></span><br><span class="line">    <span class="comment"># chain = User.get_callbacks :validation</span></span><br><span class="line"></span><br><span class="line">    options[<span class="symbol">:prepend</span>] ? chain.prepend(*mapped) : chain.append(*mapped)</span><br><span class="line">    <span class="comment"># 把mapped加入到回调链中</span></span><br><span class="line"></span><br><span class="line">    target.set_callbacks name, chain</span><br><span class="line">    <span class="comment"># 即User._validation_callbacks= chain</span></span><br><span class="line">    <span class="comment"># 执行到这里，ShowMyself.new就添加成功了</span></span><br><span class="line">    <span class="comment"># 可以执行User._validation_callbacks.first.filter看看</span></span><br><span class="line">    <span class="comment"># 应该看到类似如下结果</span></span><br><span class="line">    <span class="comment"># &lt;ShowMyself:0x007ff556309938&gt;</span></span><br><span class="line">    <span class="comment"># 正是ShowMyself的实例</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># File activesupport/lib/active_support/callbacks.rb, line 740</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">set_callbacks</span><span class="params">(name, callbacks)</span></span></span><br><span class="line">  send <span class="string">"_<span class="subst">#&#123;name&#125;</span>_callbacks="</span>, callbacks</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>normalize_callback_params</code><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">normalize_callback_params</span><span class="params">(filters, block)</span></span> <span class="comment"># :nodoc:</span></span><br><span class="line">  type = CALLBACK_FILTER_TYPES.<span class="keyword">include</span>?(filters.first) ? filters.shift : <span class="symbol">:before</span></span><br><span class="line">  <span class="comment"># type = filters中(即传过来的[:before, ShowMyself.new])第一个元素 = :before</span></span><br><span class="line"></span><br><span class="line">  options = filters.extract_options!</span><br><span class="line">  filters.unshift(block) <span class="keyword">if</span> block</span><br><span class="line">  [type, filters, options.dup]</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"><span class="string">``</span><span class="string">`  </span></span><br><span class="line"><span class="string">- `</span>__update_callbacks<span class="string">`</span></span><br><span class="line"><span class="string">`</span><span class="string">``</span>ruby</span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">__update_callbacks</span><span class="params">(name)</span></span> <span class="comment">#:nodoc:</span></span><br><span class="line">  ([<span class="keyword">self</span>] + ActiveSupport::DescendantsTracker.descendants(<span class="keyword">self</span>)).reverse_each <span class="keyword">do</span> <span class="params">|target|</span></span><br><span class="line">    <span class="comment">#当前类User以及他的子类都需要新增这个callback, 即回调也是会继承的</span></span><br><span class="line">    chain = target.get_callbacks name</span><br><span class="line">    <span class="keyword">yield</span> target, chain.dup</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>以上是定义callback的过程，那么callback是怎么执行的呢？</p>
+<p>当执行user.valid?的时候, 其实调用了<code>run_validations!</code></p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">run_validations!</span> <span class="comment">#:nodoc:</span></span></span><br><span class="line">  _run_validation_callbacks &#123; <span class="keyword">super</span> &#125;</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>then</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">_run_</span><span class="comment">#&#123;name&#125;_callbacks(&amp;block)</span></span></span><br><span class="line">  _run_callbacks(<span class="number">_</span><span class="comment">#&#123;name&#125;_callbacks, &amp;block)</span></span><br><span class="line">  <span class="comment"># _run_callbacks(_validation_callbacks, &amp;block)</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>then</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">_run_callbacks</span><span class="params">(callbacks, &amp;block)</span></span></span><br><span class="line">  <span class="comment"># 这里的callbacks就是User._validation_callbacks</span></span><br><span class="line">  <span class="keyword">if</span> callbacks.empty?</span><br><span class="line">    block.call <span class="keyword">if</span> block</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">    runner = callbacks.compile</span><br><span class="line">    <span class="comment"># compile 是CallbackChain中定义的实例方法,返回一个lambda</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># runner就是如下形式的lambda</span></span><br><span class="line">    <span class="comment"># lambda &#123; |env|</span></span><br><span class="line">    <span class="comment">#   user_callback.call env.target, env.value</span></span><br><span class="line">    <span class="comment">#   next_callback.call env</span></span><br><span class="line">    <span class="comment"># &#125;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># user_callback也是一个lambda</span></span><br><span class="line">    <span class="comment"># lambda &#123; |target, _, &amp;blk|</span></span><br><span class="line">    <span class="comment">#    filter.public_send method_to_call, target, &amp;blk</span></span><br><span class="line">    <span class="comment"># &#125;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># 当前的self就是User实例，即user</span></span><br><span class="line">    <span class="comment"># Environment从后面可以知道就是一个Struct</span></span><br><span class="line">    e = Filters::Environment.new(<span class="keyword">self</span>, <span class="literal">false</span>, <span class="literal">nil</span>, block)</span><br><span class="line">    runner.call(e).value</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>CallbackChain的定义(节选)</li>
+</ul>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">CallbackChain</span> <span class="comment">#:nodoc:#</span></span></span><br><span class="line">  <span class="comment"># 一个可遍历的链</span></span><br><span class="line">  <span class="keyword">include</span> Enumerable</span><br><span class="line"></span><br><span class="line">  <span class="keyword">attr_reader</span> <span class="symbol">:name</span>, <span class="symbol">:config</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">compile</span></span></span><br><span class="line">    @callbacks <span class="params">||</span> @mutex.synchronize <span class="keyword">do</span></span><br><span class="line">      @callbacks <span class="params">||</span>= @chain.reverse.inject(Filters::ENDING) <span class="keyword">do</span> <span class="params">|chain, callback|</span></span><br><span class="line">        callback.apply chain</span><br><span class="line">        <span class="comment">#进入Callback::apply</span></span><br><span class="line">        <span class="comment">#此时</span></span><br><span class="line">        <span class="comment">#callback.name = :validation</span></span><br><span class="line">        <span class="comment">#callback.kind = :before</span></span><br><span class="line">      <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Callback</span> <span class="comment">#:nodoc:#</span></span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">self</span>.<span class="title">build</span><span class="params">(chain, filter, kind, options)</span></span></span><br><span class="line">    new chain.name, filter, kind, options, chain.config</span><br><span class="line">    <span class="comment"># 此时</span></span><br><span class="line">    <span class="comment"># chain.name = :validation</span></span><br><span class="line">    <span class="comment"># filter = ShowMyself.new</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">attr_accessor</span> <span class="symbol">:kind</span>, <span class="symbol">:name</span></span><br><span class="line">  <span class="keyword">attr_reader</span> <span class="symbol">:chain_config</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(name, filter, kind, options, chain_config)</span></span></span><br><span class="line">    @chain_config  = chain_config</span><br><span class="line">    @name    = name</span><br><span class="line">    @kind    = kind</span><br><span class="line">    @filter  = filter</span><br><span class="line">    @key     = compute_identifier filter</span><br><span class="line">    @if      = Array(options[<span class="symbol">:if</span>])</span><br><span class="line">    @unless  = Array(options[<span class="symbol">:unless</span>])</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">apply</span><span class="params">(next_callback)</span></span></span><br><span class="line"></span><br><span class="line">    user_conditions = conditions_lambdas</span><br><span class="line">    user_callback = make_lambda @filter</span><br><span class="line">    <span class="comment"># 当前的<span class="doctag">@filter</span> 就是ShowMyself.new</span></span><br><span class="line">    <span class="comment"># make_lambda很关键！定义在下面</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">case</span> kind</span><br><span class="line">    <span class="keyword">when</span> <span class="symbol">:before</span></span><br><span class="line">      Filters::Before.build(next_callback, user_callback, user_conditions, chain_config, @filter)</span><br><span class="line">    <span class="keyword">when</span> <span class="symbol">:after</span></span><br><span class="line">      Filters::After.build(next_callback, user_callback, user_conditions, chain_config)</span><br><span class="line">    <span class="keyword">when</span> <span class="symbol">:around</span></span><br><span class="line">      Filters::Around.build(next_callback, user_callback, user_conditions, chain_config)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">make_lambda</span><span class="params">(filter)</span></span></span><br><span class="line">    <span class="keyword">case</span> filter</span><br><span class="line">    <span class="comment"># 当filter是一个方法的时候, 如 :say_hello, 执行user.send :say_hello</span></span><br><span class="line">    <span class="keyword">when</span> Symbol</span><br><span class="line">      lambda &#123; <span class="params">|target, _, &amp;blk|</span> target.send filter, &amp;blk &#125;</span><br><span class="line">    <span class="comment"># 可以用string来定义写filter，用eval执行</span></span><br><span class="line">    <span class="keyword">when</span> String</span><br><span class="line">      l = eval <span class="string">"lambda &#123; |value| <span class="subst">#&#123;filter&#125;</span> &#125;"</span></span><br><span class="line">      lambda &#123; <span class="params">|target, value|</span> target.instance_exec(value, &amp;l) &#125;</span><br><span class="line">    <span class="keyword">when</span> Conditionals::Value <span class="keyword">then</span> filter</span><br><span class="line">    <span class="keyword">when</span> <span class="symbol">:</span><span class="symbol">:Proc</span></span><br><span class="line">      <span class="keyword">if</span> filter.arity &gt; <span class="number">1</span></span><br><span class="line">        <span class="keyword">return</span> lambda &#123; <span class="params">|target, _, &amp;block|</span></span><br><span class="line">          raise ArgumentError <span class="keyword">unless</span> block</span><br><span class="line">          target.instance_exec(target, block, &amp;filter)</span><br><span class="line">        &#125;</span><br><span class="line">      <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> filter.arity &lt;= <span class="number">0</span></span><br><span class="line">        lambda &#123; <span class="params">|target, _|</span> target.instance_exec(&amp;filter) &#125;</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">        lambda &#123; <span class="params">|target, _|</span> target.instance_exec(target, &amp;filter) &#125;</span><br><span class="line">      <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      <span class="comment"># ShowMyself.new的情况</span></span><br><span class="line">      <span class="comment"># scope=&gt;[:kind, :name]</span></span><br><span class="line">      scopes = Array(chain_config[<span class="symbol">:scope</span>])</span><br><span class="line">      method_to_call = scopes.map&#123; <span class="params">|s|</span> public_send(s) &#125;.join(<span class="string">"_"</span>)</span><br><span class="line">      <span class="comment"># method_to_call = "before_validation"</span></span><br><span class="line"></span><br><span class="line">      lambda &#123; <span class="params">|target, _, &amp;blk|</span></span><br><span class="line">        filter.public_send method_to_call, target, &amp;blk</span><br><span class="line">        <span class="comment"># ShowMyself.new.public_send "before_validation", user</span></span><br><span class="line">        <span class="comment"># 看这个lambda, 再回头看看ShowMyself里</span></span><br><span class="line">        <span class="comment"># def before_validation(model)</span></span><br><span class="line">        <span class="comment">#   p model.inspect</span></span><br><span class="line">        <span class="comment">#   puts 'def callback by class'</span></span><br><span class="line">        <span class="comment"># end</span></span><br><span class="line">        <span class="comment"># 转了一圈，终于真相大白了</span></span><br><span class="line">      &#125;</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h2><p>callback的主要实现都在ActiveSupport::Callbacks中</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># activrecord/lib/active_record/callbacks.rb</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">module</span> <span class="title">ActiveRecord</span></span></span><br><span class="line">  <span class="class"><span class="keyword">module</span> <span class="title">Base</span></span></span><br><span class="line">    <span class="keyword">include</span> Callbacks</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">module</span> <span class="title">Callbacks</span></span></span><br><span class="line">    extend ActiveSupport::Concern</span><br><span class="line">    <span class="class"><span class="keyword">module</span> <span class="title">ClassMethods</span></span></span><br><span class="line">      <span class="keyword">include</span> ActiveModel::Callbacks</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line">  <span class="comment"># 上面翻译过来就是 ActiveRecord::Base.extend ActiveModel::Callbacks</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<pre><code class="ruby"><span class="comment"># activemodel/lib/active_model/callbacks.rb</span>
+
+moudle ActiveModel
+  <span class="class"><span class="keyword">module</span> <span class="title">Callbacks</span></span>
+    <span class="function"><span class="keyword">def</span> <span class="title">self</span>.<span class="title">extended</span><span class="params">(base)</span></span> <span class="comment">#:nodoc:</span>
+      base.class_eval <span class="keyword">do</span>
+        <span class="keyword">include</span> ActiveSupport::Callbacks
+        <span class="comment"># 结果就是 ActiveRecord::Base.include ActiveSupport::Callbacks</span>
+      <span class="keyword">end</span>
+    <span class="keyword">end</span>
+  <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2014/11/21/2014-11-21-active-record-callbacks/" data-id="ckc4gc9ll0016htbo04bs59q0" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2015/01/28/2015-01-28-gcd-1-slash-2/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          在Swift中应用Grand Central Dispatch(上）
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2014/05/10/2014-05-10-d3-data-binding/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">D3中的数据绑定--enter()和exit()</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Git/">Git</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Octopress/">Octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Rails/">Rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Swift-GCD/">Swift GCD</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/UX/">UX</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/api/">api</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/octopress/">octopress</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails/">rails</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/rails-mongoid/">rails mongoid</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/reactive/">reactive</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/ruby/">ruby</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/06/">June 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/02/">February 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/01/">January 2015</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/11/">November 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2014/05/">May 2014</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/12/">December 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/11/">November 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/09/">September 2013</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2013/07/">July 2013</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2015/06/23/2015-06-23-eventmachine/">em-synchrony 中连接池的实现原理</a>
+          </li>
+        
+          <li>
+            <a href="/2015/02/03/2015-02-03-use-nsoperation-nsoperationqueue-swift/">在Swift中使用NSOperation 和NSOperationQueue</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/29/2015-01-29-gcd-2-slash-2/">在Swift中应用Grand Central Dispatch(下）</a>
+          </li>
+        
+          <li>
+            <a href="/2015/01/28/2015-01-28-gcd-1-slash-2/">在Swift中应用Grand Central Dispatch(上）</a>
+          </li>
+        
+          <li>
+            <a href="/2014/11/21/2014-11-21-active-record-callbacks/">ActiveRecord中的Callback浅析</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>
